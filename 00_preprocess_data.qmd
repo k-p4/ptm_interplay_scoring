@@ -23,6 +23,9 @@ import os
 import pandas as pd
 import re
 import glob
+import shutil
+
+# ensure that the output directory is cleaned before running this script.
 
 # Your existing parse function
 def parse_ptms(proteoform):
@@ -55,6 +58,12 @@ def main():
     base_directory = os.path.join(os.getcwd())
     data_directory = os.path.join(base_directory, 'data', 'all_organs')
     output_directory = os.path.join(base_directory, 'output', 'data_trimmed')
+    data_output_directory = os.path.join(base_directory, 'output')
+    
+    # Clean the output directory before the script starts
+    if os.path.exists(data_output_directory):
+        shutil.rmtree(data_output_directory)
+    os.makedirs(data_output_directory, exist_ok=True)
     
     # Create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
