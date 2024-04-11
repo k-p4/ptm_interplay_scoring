@@ -1,0 +1,13 @@
+---
+title: "Calculate delta I"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python find and match PTMs from combos1 to combos2 then calculate delta I}
+
+```
