@@ -1,0 +1,14 @@
+0,1,2,3,4
+K27me2,,,,
+K18me2,,,,
+K27me3,,,,
+R26me1,K27me2,,,
+K27me2,K36me1,,,
+K9me2,K27ac,K36me1,,
+K23ac,K27ac,K36me1,,
+K18ac,K27me3,K36me1,,
+K27ac,,,,
+K9me1,K14me1,R26me1,K27me2,K36me2
+K9me1,K14me1,K27me3,K36me2,
+K14ac,K18ac,K27me3,K36me1,
+K4me1,K9ac,K14me1,K27me3,K36me2

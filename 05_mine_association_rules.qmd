@@ -1,0 +1,26 @@
+---
+title: "Mine Association Rules"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+---
+
+```{python library imports}
+import os
+import re
+import numpy as np
+import pandas as pd
+from mlxtend.preprocessing import TransactionEncoder
+from mlxtend.frequent_patterns import apriori, fpmax, fpgrowth, association_rules
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+```{r library imports}
+library(reticulate)
+library(tidyverse)
+library(ggrepel)
+library(viridis)
+```
+

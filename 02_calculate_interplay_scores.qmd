@@ -1,0 +1,88 @@
+---
+title: "Calculate Interplay Scores"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python find and match PTMs from combos1 to combos2 then calculate I, ACI, NI}
+import os
+import re
+import numpy as np
+import pandas as pd
+
+# Function to find matching file pairs
+def find_matching_files(combos_1_dir, combos_2_dir):
+    combos_1_files = {f.replace('_combos_1.csv', ''): os.path.join(combos_1_dir, f) 
+                      for f in os.listdir(combos_1_dir) if f.endswith('_combos_1.csv')}
+    combos_2_files = {f.replace('_combos_2.csv', ''): os.path.join(combos_2_dir, f) 
+                      for f in os.listdir(combos_2_dir) if f.endswith('_combos_2.csv')}
+
+    matched_files = [(combos_1_files[k], combos_2_files[k]) 
+                     for k in combos_1_files if k in combos_2_files]
+    return matched_files
+
+# Interplay calculation function, adjusted for the actual column names and numpy usage
+def process_combo_pair(combos_1_file, combos_2_file, output_dir):
+    # Load combo files
+    df_combos_1 = pd.read_csv(combos_1_file)
+    df_combos_2 = pd.read_csv(combos_2_file)
+
+    # Rename columns based on the actual file structure
+    df_combos_1.rename(columns={'PTM Combination': 'discrete_mod', 'Percentage Abundance': 'discrete_abundance'}, inplace=True)
+    df_combos_2.rename(columns={'PTM Combination': 'binary_comb', 'Percentage Abundance': 'binary_abundance'}, inplace=True)
+
+    # Split PTM combinations in combos_2
+    df_combos_2[['PTM_1', 'PTM_2']] = df_combos_2['binary_comb'].apply(
+        lambda x: pd.Series(re.findall(r'([A-Z]\d*[^A-Z]*)', x)[:2])
+    )
+
+    # Merge to get abundances for each PTM in the combinations
+    df_combos_2 = df_combos_2.merge(df_combos_1, left_on='PTM_1', right_on='discrete_mod', how='left')\
+                             .rename(columns={'discrete_abundance': 'discrete_abundance_1'})
+    df_combos_2 = df_combos_2.merge(df_combos_1, left_on='PTM_2', right_on='discrete_mod', how='left')\
+                             .rename(columns={'discrete_abundance': 'discrete_abundance_2'})
+
+    # Calculate interplay score using numpy for the natural log function
+    df_combos_2['interplay'] = np.log(df_combos_2['binary_abundance'] / 
+                                      (df_combos_2['discrete_abundance_1'] * df_combos_2['discrete_abundance_2']))
+    
+    # Calculate abundance-corrected interplay score
+    df_combos_2['abundance_corrected_interplay'] = np.log(
+      (df_combos_2['binary_abundance'] *
+       (1 - df_combos_2['discrete_abundance_1']) *
+       (1 - df_combos_2['discrete_abundance_2'])) /
+      (df_combos_2['discrete_abundance_1'] *
+       df_combos_2['discrete_abundance_2'] *
+       (df_combos_2['discrete_abundance_1'] - df_combos_2['binary_abundance']) *
+       (df_combos_2['discrete_abundance_2'] - df_combos_2['binary_abundance']))
+    )
+      
+    # Calculate normalized interplay
+    df_combos_2['normalized_interplay'] = df_combos_2['interplay'] / (-np.log(df_combos_2['binary_abundance']))
+
+    # Ensure the output directory exists
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Construct the output file path and save the processed DataFrame
+    output_file = os.path.basename(combos_2_file).replace('_combos_2.csv', '_interplay_scores.csv')
+    output_file_path = os.path.join(output_dir, output_file)
+    df_combos_2.to_csv(output_file_path, index=False)
+    print(f'Saved processed data to: {output_file_path}')
+
+# Paths are set as per the current working directory and the specified structure
+base_dir = os.path.join(os.getcwd())  # Using the current working directory as base
+combos_1_dir = os.path.join(base_dir, 'output', 'combos', 'combos_1')
+combos_2_dir = os.path.join(base_dir, 'output', 'combos', 'combos_2')
+output_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Output directory for interplay scores
+
+# Find matching files and process each pair
+matched_files = find_matching_files(combos_1_dir, combos_2_dir)
+for combos_1_file, combos_2_file in matched_files:
+    process_combo_pair(combos_1_file, combos_2_file, output_dir)
+
+```

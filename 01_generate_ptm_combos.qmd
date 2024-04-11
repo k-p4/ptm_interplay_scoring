@@ -1,0 +1,105 @@
+---
+title: "Generate PTM Combinations"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+---
+
+
+```{python generate all possible combinations of PTMs up to the proteoform level}
+import os
+import pandas as pd
+import re
+from itertools import combinations
+from os.path import basename, splitext
+import glob
+
+def parse_ptms(proteoform):
+    # Find all post-translational modifications (PTMs) in the proteoform string
+    ptms = re.findall(r'([A-Z]\d*[^A-Z]*)', proteoform)
+    return ptms
+
+def sort_ptms_by_position(ptms):
+    # Sort PTMs based on their position in the protein sequence
+    ptms.sort(key=lambda x: int(re.search(r'\d+', x).group()))
+    return ''.join(ptms)
+
+def is_valid_combination(combination):
+    # Placeholder for any validation logic for PTM combinations
+    return True
+
+def compute_ptm_combinations(df):
+    # Compute the combinations of PTMs for each proteoform in the dataframe
+    ptm_combinations = {}
+    invalid_combos = []
+
+    for index, row in df.iterrows():
+        proteoform = row['Sorted Proteoform']
+        percentage = row['percentage']
+        ptms = parse_ptms(proteoform)
+
+        for r in range(1, len(ptms) + 1):
+            for combination in combinations(ptms, r):
+                sorted_combination = sort_ptms_by_position(list(combination))
+                if not is_valid_combination(combination):
+                    invalid_combos.append(sorted_combination)
+                    continue
+
+                combination_key = f"{len(combination)}_{sorted_combination}"
+                ptm_combinations[combination_key] = ptm_combinations.get(combination_key, 0) + percentage
+
+    ptm_combinations = {k: v for k, v in ptm_combinations.items()}
+    return ptm_combinations, list(set(invalid_combos))
+
+def write_combinations_to_files(ptm_combinations, base_file_name, combos_root_directory):
+    # Create subdirectories based on the combination level and write output files accordingly
+    combinations_by_level = {}
+
+    for combination, percentage in ptm_combinations.items():
+        level, ptm_combination = combination.split('_', 1)
+        if level not in combinations_by_level:
+            combinations_by_level[level] = []
+        combinations_by_level[level].append((ptm_combination, percentage))
+
+    for level, combos in combinations_by_level.items():
+        # Determine the directory for the current level within combos_root_directory
+        level_directory = os.path.join(combos_root_directory, f'combos_{level}')
+        if not os.path.exists(level_directory):
+            os.makedirs(level_directory)  # Create the directory if it does not exist
+        
+        # Define the output file path within the level directory
+        output_file_path = os.path.join(level_directory, f'{base_file_name}_combos_{level}.csv')
+        
+        # Write the data to a CSV file
+        df = pd.DataFrame(combos, columns=['PTM Combination', 'Percentage Abundance']).drop_duplicates()
+        df.to_csv(output_file_path, index=False)
+
+def main():
+    # Path setup for the source data and the output within the same 'output' folder
+    base_directory = os.getcwd()
+    output_directory = os.path.join(base_directory, "output")
+    combos_root_directory = os.path.join(output_directory, "combos")
+
+    # Pattern to match the source CSV files within the output directory
+    pattern = os.path.join(output_directory, "*_H3.[23]_sorted_proteoform.csv")
+
+    for file_path in glob.glob(pattern):
+        base_file_name = splitext(basename(file_path))[0]
+        
+        df = pd.read_csv(file_path)
+        ptm_combinations, invalid_combos = compute_ptm_combinations(df)
+        
+        write_combinations_to_files(ptm_combinations, base_file_name, combos_root_directory)
+
+        if invalid_combos:
+            # Handle invalid combos file within the combos_root_directory
+            invalid_combos_path = os.path.join(combos_root_directory, f'{base_file_name}_invalid_combos.log')
+            with open(invalid_combos_path, 'w') as f:
+                for combo in invalid_combos:
+                    f.write(f"{combo}\n")
+
+if __name__ == "__main__":
+    main()
+    
+```

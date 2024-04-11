@@ -1,0 +1,385 @@
+---
+title: "Preprocess Data"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python library imports}
+import os
+import re
+import glob
+import numpy as np
+import pandas as pd
+
+```
+
+
+```{python trim modifications data from CrosstalkDB to only mods analyzed in 10.1093/nar/gkx696, and Viet recommendation}
+import os
+import pandas as pd
+import re
+import glob
+
+# Your existing parse function
+def parse_ptms(proteoform):
+    # Find all post-translational modifications (PTMs) in the proteoform string
+    ptms = re.findall(r'([A-Z]\d*[^A-Z]*)', proteoform)
+    return ptms
+
+# List of specified PTMs
+specified_ptms = ["K4me1", "R8me1", "K9me1", "K9me2", "K9me3", "K9ac", "K14me1", "K14me2", "K14me3", "K14ac", 
+                  "R17me1", "R17me2", "K18me1", "K18me2", "K18ac", "K23me1", "K23me2", "K23me3", "K23ac", 
+                  "R26me1", "R26me2", "K27me1", "K27me2", "K27me3", "K27ac", "K36me1", "K36me2", "K36me3"]
+
+# Filter function to determine if a proteoform string matches the specified PTMs criteria
+def matches_specified_ptms(proteoform):
+    ptms = parse_ptms(proteoform)
+    return all(ptm in specified_ptms for ptm in ptms)
+
+# Function to filter and save a new CSV file
+def filter_csv(file_path, output_directory):
+    df = pd.read_csv(file_path)
+    filtered_df = df[df['modifications'].apply(matches_specified_ptms)]
+    # Construct the new file name and path
+    base_file_name = os.path.basename(file_path)
+    new_file_path = os.path.join(output_directory, base_file_name)
+    filtered_df.to_csv(new_file_path, index=False)
+    print(f"Filtered CSV saved to: {new_file_path}")
+
+def main():
+    # Setup for directories
+    base_directory = os.path.join(os.getcwd())
+    data_directory = os.path.join(base_directory, 'data', 'all_organs')
+    output_directory = os.path.join(base_directory, 'output', 'data_trimmed')
+    
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_directory, exist_ok=True)
+    
+    # Find all CSV files in the data directory
+    csv_files = glob.glob(os.path.join(data_directory, '*.csv'))
+    
+    # Process each file
+    for file_path in csv_files:
+        filter_csv(file_path, output_directory)
+
+if __name__ == "__main__":
+    main()
+
+```
+
+```{python process ptm code to full proteoform}
+import os
+import pandas as pd
+
+# Your specified PTMs list
+specified_ptms = [
+    "K4me1", "R8me1", "K9me1", "K9me2", "K9me3", "K9ac",
+    "K14me1", "K14me2", "K14me3", "K14ac", "R17me1", "R17me2",
+    "K18me1", "K18me2", "K18ac", "K23me1", "K23me2", "K23me3", "K23ac",
+    "R26me1", "R26me2", "K27me1", "K27me2", "K27me3", "K27ac",
+    "K36me1", "K36me2", "K36me3"
+]
+
+# Residue positions and their possible modifications
+residue_positions = {
+    'K': [4, 9, 14, 18, 23, 27, 36],
+    'R': [8, 17, 26]
+}
+
+# Function to add unmodified residues based on specified PTMs
+def add_unmodified_residues(ptm_code):
+    full_proteoform = ""
+    for residue, positions in residue_positions.items():
+        for position in positions:
+            modifications = [f"{residue}{position}me1", f"{residue}{position}me2", f"{residue}{position}me3"]
+            if residue == 'K':
+                modifications.append(f"{residue}{position}ac")
+            # Add unmodified residue if no modification is found in ptm_code
+            if not any(mod in ptm_code for mod in modifications):
+                full_proteoform += f"{residue}{position}un"
+    full_proteoform += ptm_code  # Append the existing modifications
+    return full_proteoform
+
+# Example usage
+directory_path = os.path.join(os.getcwd(), 'output', "data_trimmed")
+output_directory = os.path.join(os.getcwd(), "output")
+
+for filename in os.listdir(directory_path):
+    if filename.endswith(".csv"):
+        file_path = os.path.join(directory_path, filename)
+        data = pd.read_csv(file_path)
+        original_df = pd.DataFrame(data)
+
+        # Apply the function to add unmodified residues
+        original_df['Full Proteoform'] = original_df['modifications'].apply(add_unmodified_residues)
+
+        # Save the updated DataFrame to a new CSV file
+        output_file_path = os.path.join(output_directory, f"{os.path.splitext(filename)[0]}_full_proteoform.csv")
+        original_df.to_csv(output_file_path, index=False)
+
+        print(f"Processed: {filename}")
+
+print("Modification fill-up Processing completed.")
+
+```
+
+```{python process full proteoform to sorted proteoform}
+# Function to sort proteoform residues while preserving modifications
+def sort_proteoform(proteoform_string):
+    elements = re.findall(r'[A-Z][^A-Z]*', proteoform_string)
+    numeric_values = [int(re.search(r'\d+', element).group()) for element in elements]
+    sorted_elements = [element for _, element in sorted(zip(numeric_values, elements))]
+    sorted_proteoform = ''.join(sorted_elements)
+    return sorted_proteoform
+
+# Output directory
+output_directory = os.path.join(os.getcwd(), "output")
+
+# Loop through all CSV files in the directory
+for filename in os.listdir(output_directory):
+    if filename.endswith("_full_proteoform.csv"):
+        # Read the CSV file into a DataFrame
+        file_path = os.path.join(output_directory, filename)
+        data = pd.read_csv(file_path)
+        original_df = pd.DataFrame(data)
+
+        # Apply the function to the 'Full Proteoform' column and create a new column 'Sorted Proteoform'
+        original_df['Sorted Proteoform'] = original_df['Full Proteoform'].apply(sort_proteoform)
+
+        # Output file path for the new CSV file with '_sorted_proteoform' appended to the original file name
+        output_file_path = os.path.join(output_directory, f"{os.path.splitext(filename)[0]}_sorted_proteoform.csv")
+
+        # Save the updated DataFrame to a new CSV file
+        original_df.to_csv(output_file_path, index=False)
+
+        print(f"Processed: {filename}")
+
+print("Modifications roll-up to full proteoforms complete.")
+
+```
+
+```{python separate proteoforms into files by variant}
+directory_path = output_directory = os.path.join(os.getcwd(), "output")
+
+# Loop through each file in the directory
+for filename in os.listdir(directory_path):
+    if filename.endswith("_sorted_proteoform.csv"):
+        file_path = os.path.join(directory_path, filename)
+
+        # Read the CSV file into a DataFrame
+        df = pd.read_csv(file_path)
+
+        # Separate based on protein name
+        histone_h3_2_df = df[df['protein name'] == 'Histone H3.2']
+        histone_h3_3_df = df[df['protein name'] == 'Histone H3.3']
+
+        # Save new DataFrames to separate files
+        histone_h3_2_filename = filename.replace("_sorted_proteoform.csv", "_Histone_H3.2_sorted_proteoform.csv")
+        histone_h3_3_filename = filename.replace("_sorted_proteoform.csv", "_Histone_H3.3_sorted_proteoform.csv")
+
+        histone_h3_2_df.to_csv(os.path.join(directory_path, histone_h3_2_filename), index=False)
+        histone_h3_3_df.to_csv(os.path.join(directory_path, histone_h3_3_filename), index=False)
+
+print("Variant separation complete.")
+
+```
+
+```{python split modifications into constituent PTM dataframes}
+# Function to split modifications into constituent PTMs
+def split_modifications(modifications):
+    return modifications.str.strip().str.findall('[A-Z][^A-Z]*')
+
+# Directory containing the files
+input_directory = os.path.join(os.getcwd(), "output")
+output_directory = os.path.join(input_directory, "all_modifications")
+
+# Create output directory if it doesn't exist
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)
+
+# Iterate through each H3.2 file in the directory
+for filename in os.listdir(input_directory):
+    if filename.endswith("_H3.2_sorted_proteoform.csv"):
+        file_path = os.path.join(input_directory, filename)
+        
+        # Read the file
+        df = pd.read_csv(file_path)
+        
+        # Extract the modifications column
+        modifications = df['modifications']
+        
+        # Split modifications into constituent PTMs
+        ptms = split_modifications(modifications)
+        
+        # Create DataFrame with PTMs
+        ptms_df = pd.DataFrame(ptms.tolist())
+        
+        # Write DataFrame to CSV file
+        output_filename = filename.replace(".csv", "_modifications.csv")
+        output_path = os.path.join(output_directory, output_filename)
+        ptms_df.to_csv(output_path, index=False)
+        
+# Iterate through each H3.3 file in the directory
+for filename in os.listdir(input_directory):
+    if filename.endswith("_H3.3_sorted_proteoform.csv"):
+        file_path = os.path.join(input_directory, filename)
+        
+        # Read the file
+        df = pd.read_csv(file_path)
+        
+        # Extract the modifications column
+        modifications = df['modifications']
+        
+        # Split modifications into constituent PTMs
+        ptms = split_modifications(modifications)
+        
+        # Create DataFrame with PTMs
+        ptms_df = pd.DataFrame(ptms.tolist())
+        
+        # Write DataFrame to CSV file
+        output_filename = filename.replace(".csv", "_modifications.csv")
+        output_path = os.path.join(output_directory, output_filename)
+        ptms_df.to_csv(output_path, index=False)
+print("Generating Modification files complete.")
+
+```
+```{python calculate percentages and generate columns in TDMS/Interp format (use with Young Lab tools)}
+import os
+import glob
+import pandas as pd
+
+# Directory containing your CSV files
+directory = os.path.join(os.getcwd(), "output")  # Replace with the directory path containing your CSV files
+
+# Loop through all CSV files in the directory
+for file_path in glob.glob(os.path.join(directory, "*H3.2_sorted_proteoform.csv")):
+    # Load the CSV file
+    data = pd.read_csv(file_path)
+
+    # Calculate the sum of the quantification column
+    quantification_sum = data['quantification'].sum()
+
+    # Calculate percentage abundance and add it as a new column
+    data['percentage'] = (data['quantification'] / quantification_sum)
+
+    # Extract histone names and create a new column
+    data['histone'] = data['protein name'].str.replace('Histone ', '')
+
+    # Write the updated dataframe back to the CSV file
+    data.to_csv(file_path, index=False)
+
+    print(f"Updated file: {file_path}")
+
+print("All H3.2 files updated.")
+
+
+# Directory containing your CSV files
+directory = os.path.join(os.getcwd(), "output")  # Replace with the directory path containing your CSV files
+
+# Loop through all CSV files in the directory
+for file_path in glob.glob(os.path.join(directory, "*H3.3_sorted_proteoform.csv")):
+    # Load the CSV file
+    data = pd.read_csv(file_path)
+
+    # Calculate the sum of the quantification column
+    quantification_sum = data['quantification'].sum()
+
+    # Calculate percentage abundance and add it as a new column
+    data['percentage'] = (data['quantification'] / quantification_sum)
+
+    # Extract histone names and create a new column
+    data['histone'] = data['protein name'].str.replace('Histone ', '')
+
+    # Write the updated dataframe back to the CSV file
+    data.to_csv(file_path, index=False)
+
+    print(f"Updated file: {file_path}")
+
+print("All H3.3 files updated.")
+
+```
+
+```{python write Interp files to new directory}
+import os
+import shutil
+import pandas as pd
+
+# Define the output directory
+output_directory = os.path.join(os.getcwd(), "output")
+interp_input_directory = os.path.join(output_directory, "interp_input")
+
+# Create interp_input directory if it doesn't exist
+os.makedirs(interp_input_directory, exist_ok=True)
+
+# Loop through all files in the output directory
+for file_name in os.listdir(output_directory):
+    if file_name.endswith("H3.2_sorted_proteoform.csv"):
+        # Source file path
+        source_file_path = os.path.join(output_directory, file_name)
+        
+        # Destination file path
+        destination_file_path = os.path.join(interp_input_directory, file_name)
+        
+        # Copy the file to interp_input directory
+        shutil.copyfile(source_file_path, destination_file_path)
+        
+        # Read the copied file
+        data = pd.read_csv(destination_file_path)
+        
+        # Select only required columns
+        selected_columns = ['histone', 'peptide Sequence', 'Sorted Proteoform', 'percentage']
+        data = data[selected_columns]
+        
+        # Multiply 'percentage' column by 100000000 to generate interp readable intensities
+        data['percentage'] *= 10000000
+        
+        # Write the modified dataframe back to the file
+        data.to_csv(destination_file_path, index=False)
+
+        # Remove header from the file
+        with open(destination_file_path, 'r') as file:
+            lines = file.readlines()
+        with open(destination_file_path, 'w') as file:
+            file.writelines(lines[1:])
+
+print("All H3.2 files processed.")
+
+# Loop through all files in the output directory
+for file_name in os.listdir(output_directory):
+    if file_name.endswith("H3.3_sorted_proteoform.csv"):
+        # Source file path
+        source_file_path = os.path.join(output_directory, file_name)
+        
+        # Destination file path
+        destination_file_path = os.path.join(interp_input_directory, file_name)
+        
+        # Copy the file to interp_input directory
+        shutil.copyfile(source_file_path, destination_file_path)
+        
+        # Read the copied file
+        data = pd.read_csv(destination_file_path)
+        
+        # Select only required columns
+        selected_columns = ['histone', 'peptide Sequence', 'Sorted Proteoform', 'percentage']
+        data = data[selected_columns]
+        
+        # Multiply 'percentage' column by 10000000 to generate interp readable intensities
+        data['percentage'] *= 1000000
+        
+        # Write the modified dataframe back to the file
+        data.to_csv(destination_file_path, index=False)
+
+        # Remove header from the file
+        with open(destination_file_path, 'r') as file:
+            lines = file.readlines()
+        with open(destination_file_path, 'w') as file:
+            file.writelines(lines[1:])
+
+print("All H3.3 files processed.")
+
+```
+
