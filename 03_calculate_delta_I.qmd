@@ -14,6 +14,39 @@ import re
 import numpy as np
 import pandas as pd
 
+# Example Contingency Table for Delta I Calculation
+# This table shows the PTM percentage used in the Delta I calculation.
+# +------------------------------------------------+
+# |              |  PTM2      |  PTM2             |
+# |              |  Present   |  Absent           |
+# +------------------------------------------------+
+# | PTM1 Present |     a     |      b             |
+# +------------------------------------------------+
+# | PTM1 Absent  |     c     |      d             |
+# +------------------------------------------------+
+#
+# Where:
+# 'a' is % when both PTM1 and PTM2 are present 
+# 'a' = binary abundance PTM1PTM2
+#
+#
+# 'b' is % when PTM1 is present but PTM2 is absent
+# 'b' = (discrete abund PTM1 - binary abund PTM1PTM2)
+#
+#
+# 'c' is % when PTM1 is absent but PTM2 is present 
+# 'c' = (discrete abund PTM2 - binary abund PTM1PTM2)
+#
+#
+# 'd' is % when neither PTM1 nor PTM2 are present 
+# 'd' = (1 - (discrete PTM1 + discrete PTM2 - binary abund PTM1&PTM2))
+#
+# Delta I_(PTM2|PTM1) calculation: (a / (a + b)) - (c / (c + d))
+# Delta I_(PTM1|PTM2) calculation: (a / (a + c)) - (b / (b + d))
+#
+# This table is used to understand the asymmetric crosstalk between two modifications.
+
+
 # Function to find matching file pairs
 def find_matching_files(combos_1_dir, combos_2_dir):
     combos_1_files = {f.replace('_combos_1.csv', ''): os.path.join(combos_1_dir, f)
@@ -46,29 +79,33 @@ def process_combo_pair(combos_1_file, combos_2_file, output_dir):
     df_combos_2 = df_combos_2.merge(df_combos_1, left_on='PTM_2', right_on='discrete_mod', how='left')\
                              .rename(columns={'discrete_abundance': 'discrete_abundance_2'})
 
-    # Assuming df_combos_2 is your DataFrame after all joins and merges
+    # Create columns for Delta I calculations
+    
     # Create column a
     df_combos_2['a'] = df_combos_2['binary_abundance']
-
-    # Calculate column b
-    df_combos_2['b'] = df_combos_2['discrete_abundance_2'] - df_combos_2['a']
-
-    # Calculate column c
-    df_combos_2['c'] = df_combos_2['discrete_abundance_1'] - df_combos_2['a']
-
-    # Calculate column d
+    
+    # Create column b
+    df_combos_2['b'] = df_combos_2['discrete_abundance_1'] - df_combos_2['a']
+    
+    # Create column c
+    df_combos_2['c'] = df_combos_2['discrete_abundance_2'] - df_combos_2['a']
+    
+    # Create column d
     df_combos_2['d'] = 1 - (df_combos_2['discrete_abundance_1'] + df_combos_2['discrete_abundance_2'] - df_combos_2['a'])
 
+    # Delta I Calculations
+    
     # Create column delta_I_(2|1)_PTM_combo
     df_combos_2['delta_I_(2|1)_PTM_combo'] = df_combos_2['PTM_2'] + '|' + df_combos_2['PTM_1']
 
-    # Calculate column delta_I_(2|1)
+    # Calculate delta_I_(2|1)
     df_combos_2['delta_I_(2|1)'] = (df_combos_2['a'] / (df_combos_2['a'] + df_combos_2['b'])) - (df_combos_2['c'] / (df_combos_2['c'] + df_combos_2['d']))
-
+    
+    
     # Create column delta_I_(1|2)_PTM_combo
     df_combos_2['delta_I_(1|2)_PTM_combo'] = df_combos_2['PTM_1'] + '|' + df_combos_2['PTM_2']
 
-    # Calculate column delta_I_(1|2)
+    # Calculate delta_I_(1|2)
     df_combos_2['delta_I_(1|2)'] = (df_combos_2['a'] / (df_combos_2['a'] + df_combos_2['c'])) - (df_combos_2['b'] / (df_combos_2['b'] + df_combos_2['d']))
 
     # Ensure the output directory exists
@@ -76,20 +113,22 @@ def process_combo_pair(combos_1_file, combos_2_file, output_dir):
         os.makedirs(output_dir)
 
     # Construct the output file path and save the processed DataFrame
-    output_file = os.path.basename(combos_2_file).replace('_combos_2.csv','_delta_I_scores.csv')
+    output_file = os.path.basename(combos_2_file).replace('_combos_2.csv', '_delta_I_scores.csv')
     output_file_path = os.path.join(output_dir, output_file)
     df_combos_2.to_csv(output_file_path, index=False)
     print(f'Saved processed data to: {output_file_path}')
 
-# Paths are set as per the current working directory and the specified structure
-base_dir = os.path.join(os.getcwd())  # Using the current working directory as base
+# Setup paths based on the current working directory
+base_dir = os.path.join(os.getcwd())
 combos_1_dir = os.path.join(base_dir, 'output', 'combos', 'combos_1')
 combos_2_dir = os.path.join(base_dir, 'output', 'combos', 'combos_2')
-output_dir = os.path.join(base_dir, 'output', 'delta_I_scores')  # Output directory for interplay scores
+output_dir = os.path.join(base_dir, 'output', 'delta_I_scores')
 
-# Find matching files and process each pair
+# Process each pair of matching files
 matched_files = find_matching_files(combos_1_dir, combos_2_dir)
 for combos_1_file, combos_2_file in matched_files:
     process_combo_pair(combos_1_file, combos_2_file, output_dir)
+
+print("delta I calculations complete")
 
 ```
