@@ -90,6 +90,12 @@ for combos_1_file, combos_2_file in matched_files:
 ```{python process files to calculate averages of interplay scores}
 import os
 import pandas as pd
+import re
+
+def parse_ptms(proteoform):
+    # Find all post-translational modifications (PTMs) in the proteoform string
+    ptms = re.findall(r'([A-Z]\d*[^A-Z]*)', proteoform)
+    return ptms[:2]  # Return only the first two PTMs found
 
 def process_files(annotation_df, base_dir, input_dir, output_dir):
     # Construct full input and output paths
@@ -117,8 +123,9 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
         try:
             data_df = pd.read_csv(file_path)
 
-            # Pre-rename all columns (except for 'binary_comb' which is used for merging) to include unique suffix
-            data_df.rename(columns={col: f'{col}_{unique_suffix}' for col in data_df.columns if col != 'binary_comb'}, inplace=True)
+            # Pre-rename all columns to include unique suffix, except 'binary_comb'
+            rename_columns = {col: f'{col}_{unique_suffix}' for col in data_df.columns if col != 'binary_comb'}
+            data_df.rename(columns=rename_columns, inplace=True)
 
             # Merge dataframes based on 'binary_comb', condition, and histone
             key = (condition, histone)
@@ -135,25 +142,26 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
     for (condition, histone), df in condition_histone_dfs.items():
         df.fillna(0, inplace=True)
         
-        interplay_columns = [col for col in df.columns if col.startswith('interplay_')]
-        print(f"Interplay columns for averaging in {condition}_{histone}: {interplay_columns}")  # Debugging
+        interplay_columns = df.filter(regex='interplay_').columns
         df['avg_interplay'] = df[interplay_columns].mean(axis=1)
         
-        ac_interplay_columns = [col for col in df.columns if col.startswith('abundance_corrected_interplay_')]
-        print(f"Abundance Corrected Interplay columns for averaging in {condition}_{histone}: {ac_interplay_columns}")  # Debugging
+        ac_interplay_columns = df.filter(regex='abundance_corrected_interplay_').columns
         df['avg_abundance_corrected_interplay'] = df[ac_interplay_columns].mean(axis=1)
         
-        normalized_columns = [col for col in df.columns if col.startswith('normalized_interplay_')]
-        print(f"Normalized Interplay columns for averaging in {condition}_{histone}: {normalized_columns}")  # Debugging
+        normalized_columns = df.filter(regex='normalized_interplay_').columns
         df['avg_normalized_interplay'] = df[normalized_columns].mean(axis=1)
+
+        # Parse PTMs and add as new columns
+        df[['PTM_1', 'PTM_2']] = df['binary_comb'].apply(parse_ptms).apply(pd.Series)
+
+        # Select only the required columns for the final output
+        final_columns = ['binary_comb', 'PTM_1', 'PTM_2', 'avg_interplay', 'avg_abundance_corrected_interplay', 'avg_normalized_interplay']
+        final_df = df[final_columns]
 
         # Save to CSV
         filename = f'{condition}_{histone}_avg_interplay_scores.csv'
-        df.to_csv(os.path.join(output_path, filename), index=False)
+        final_df.to_csv(os.path.join(output_path, filename), index=False)
         print(f'Saved processed data to: {os.path.join(output_path, filename)}')
-
-
-
 
 # Usage
 if __name__ == "__main__":
