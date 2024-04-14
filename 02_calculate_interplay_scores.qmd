@@ -172,4 +172,6 @@ if __name__ == "__main__":
     annotation_df = pd.read_csv(annotation_path)
     process_files(annotation_df, base_dir, input_dir, output_dir)
     
+print("Interplay scores averaging completed.")
 ```
+
