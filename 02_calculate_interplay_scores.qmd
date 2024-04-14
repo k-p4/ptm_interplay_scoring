@@ -86,3 +86,82 @@ for combos_1_file, combos_2_file in matched_files:
     process_combo_pair(combos_1_file, combos_2_file, output_dir)
 
 ```
+
+```{python process files to calculate averages of interplay scores}
+import os
+import pandas as pd
+
+def process_files(annotation_df, base_dir, input_dir, output_dir):
+    # Construct full input and output paths
+    input_path = os.path.join(base_dir, input_dir)
+    output_path = os.path.join(base_dir, output_dir)
+
+    # Ensure output directory exists
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    
+    # Dictionary to store dataframes for each condition and histone for processing
+    condition_histone_dfs = {}
+
+    # Loop through each file and process
+    for index, row in annotation_df.iterrows():
+        file_name = row['filename']
+        file_path = os.path.join(input_path, file_name)
+        condition = row['condition']
+        sample_name = row['sample_name']
+        biorep = row['biorep']
+        histone = row['histone']
+        unique_suffix = f"{sample_name}_rep{biorep}_{histone}"
+
+        # Load the CSV file
+        try:
+            data_df = pd.read_csv(file_path)
+
+            # Pre-rename all columns (except for 'binary_comb' which is used for merging) to include unique suffix
+            data_df.rename(columns={col: f'{col}_{unique_suffix}' for col in data_df.columns if col != 'binary_comb'}, inplace=True)
+
+            # Merge dataframes based on 'binary_comb', condition, and histone
+            key = (condition, histone)
+            if key in condition_histone_dfs:
+                condition_histone_dfs[key] = pd.merge(condition_histone_dfs[key], data_df, on='binary_comb', how='outer')
+            else:
+                condition_histone_dfs[key] = data_df
+
+        except FileNotFoundError:
+            print(f"File not found: {file_path}")
+            continue
+
+    # Process each dataframe to fill NAs and calculate averages
+    for (condition, histone), df in condition_histone_dfs.items():
+        df.fillna(0, inplace=True)
+        
+        interplay_columns = [col for col in df.columns if col.startswith('interplay_')]
+        print(f"Interplay columns for averaging in {condition}_{histone}: {interplay_columns}")  # Debugging
+        df['avg_interplay'] = df[interplay_columns].mean(axis=1)
+        
+        ac_interplay_columns = [col for col in df.columns if col.startswith('abundance_corrected_interplay_')]
+        print(f"Abundance Corrected Interplay columns for averaging in {condition}_{histone}: {ac_interplay_columns}")  # Debugging
+        df['avg_abundance_corrected_interplay'] = df[ac_interplay_columns].mean(axis=1)
+        
+        normalized_columns = [col for col in df.columns if col.startswith('normalized_interplay_')]
+        print(f"Normalized Interplay columns for averaging in {condition}_{histone}: {normalized_columns}")  # Debugging
+        df['avg_normalized_interplay'] = df[normalized_columns].mean(axis=1)
+
+        # Save to CSV
+        filename = f'{condition}_{histone}_avg_interplay_scores.csv'
+        df.to_csv(os.path.join(output_path, filename), index=False)
+        print(f'Saved processed data to: {os.path.join(output_path, filename)}')
+
+
+
+
+# Usage
+if __name__ == "__main__":
+    base_dir = os.getcwd()  # Base directory using getcwd()
+    input_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Relative path to input directory
+    output_dir = os.path.join(base_dir, 'output', 'interplay_scores', 'averaged_interplay_scores')  # Relative path to output directory
+    annotation_path = os.path.join(base_dir, 'output', 'interplay_scores', 'experimental_annotation.csv')
+    annotation_df = pd.read_csv(annotation_path)
+    process_files(annotation_df, base_dir, input_dir, output_dir)
+    
+```
