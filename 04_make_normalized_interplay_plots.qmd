@@ -8,7 +8,7 @@ execute:
   echo: false
 ---
 
-```{python}
+```{python convert normalized interplay df into matrices for plotting}
 import os
 import pandas as pd
 import numpy as np
@@ -66,7 +66,7 @@ print("All interplay files processed successfully.")
 
 ```
 
-```{python}
+```{python convert averaged normalized interplay dfs into matrices for plotting}
 import os
 import pandas as pd
 import numpy as np
@@ -76,8 +76,8 @@ import re
 base_dir = os.getcwd()
 
 # Paths relative to the current working directory
-input_dir = os.path.join(base_dir, "output", "interplay_scores", "averaged_interplay_scores")
-output_dir = os.path.join(base_dir, "output", "interplay_scores", "interplay_matrices", "averaged_interplay_matrices")
+input_dir = os.path.join(base_dir, "output", "interplay_scores", 'averaged_interplay_scores')
+output_dir = os.path.join(base_dir, "output", "interplay_scores", 'averaged_interplay_scores', "averaged_interplay_matrices")
 
 # Create the output directory if it doesn't exist
 if not os.path.exists(output_dir):
@@ -108,7 +108,7 @@ def process_csv(file_path):
     
     # Define the output file path
     file_name = os.path.basename(file_path)
-    output_file_path = os.path.join(output_dir, file_name.replace('_interplay_scores.csv', '_interplay_matrix.csv'))
+    output_file_path = os.path.join(output_dir, file_name.replace('_avg_interplay_scores.csv', '_avg_interplay_matrix.csv'))
     
     # Save the matrix to a new CSV file
     matrix_filled.to_csv(output_file_path)
@@ -120,7 +120,63 @@ for file in os.listdir(input_dir):
         process_csv(file_path)
         print(f"Processed and saved matrix for {file}")
 
-print("All averaged interplay files processed successfully.")
+print("All interplay files processed successfully.")
 
+```
+
+```{r plot averaged normalized interplay matrices}
+# Load necessary libraries
+library(corrplot)
+library(RColorBrewer)
+
+# Define input and output directories
+input_dir <- "./output/interplay_scores/interplay_matrices/averaged_interplay_matrices"
+output_dir <- "./figs/interplay_matrices/averaged_interplay_matrices"
+
+# Ensure the output directory exists
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+
+# Get all CSV files in the input directory
+files <- list.files(input_dir, pattern = "\\.csv$", full.names = TRUE)
+
+# Function to process each file
+process_file <- function(file_path) {
+  # Read the matrix from the file
+  data <- read.csv(file_path, check.names = FALSE)
+  
+  # Replace all NA/missing values with a unique placeholder
+  data[is.na(data)] <- 3.14159265222
+  
+  # Create a vector of row names from the first column
+  row_names <- data[, 1]
+  
+  # Drop the first row
+  data <- data[-1, ]
+  
+  # Drop the first column
+  data <- data[, -1]
+  
+  # Convert the cleaned data frame to a matrix
+  matrix_data <- as.matrix(data)
+  
+  # Replace all placeholder values back to NA
+  matrix_data[matrix_data == 3.14159265222] <- NA
+  
+  # Set row names for the matrix
+  row.names(matrix_data) <- row_names[-1]  # Exclude the first element because the first row was dropped
+  
+  # Generate SVG file
+  svg_filename <- paste(output_dir, "/", tools::file_path_sans_ext(basename(file_path)), "_corrplot.svg", sep = "")
+  svg(svg_filename)
+  corrplot(matrix_data, method = 'color', col = brewer.pal(n = 9, name = "YlGnBu"), 
+           type = "upper", diag = FALSE, na.label = "×", cl.lim = c(-1, 1))
+  dev.off()  # Close the SVG device
+}
+
+# Process all files
+lapply(files, process_file)
+cat("All plots have been generated and saved to:", output_dir, "\n")
 
 ```
