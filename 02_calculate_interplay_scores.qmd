@@ -61,8 +61,10 @@ def process_combo_pair(combos_1_file, combos_2_file, output_dir):
        (df_combos_2['discrete_abundance_2'] - df_combos_2['binary_abundance']))
     )
       
-    # Calculate normalized interplay
-    df_combos_2['normalized_interplay'] = df_combos_2['interplay'] / (-np.log(df_combos_2['binary_abundance']))
+    # Calculate normalized interplay score
+    df_combos_2['normalized_interplay'] = ((np.log(df_combos_2['binary_abundance'] / 
+                                      (df_combos_2['discrete_abundance_1'] * df_combos_2['discrete_abundance_2'])) /
+                                           (-np.log(df_combos_2['binary_abundance']))))
 
     # Ensure the output directory exists
     if not os.path.exists(output_dir):
@@ -84,6 +86,7 @@ output_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Output dire
 matched_files = find_matching_files(combos_1_dir, combos_2_dir)
 for combos_1_file, combos_2_file in matched_files:
     process_combo_pair(combos_1_file, combos_2_file, output_dir)
+
 
 ```
 
