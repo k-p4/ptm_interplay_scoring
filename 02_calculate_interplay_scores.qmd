@@ -8,92 +8,114 @@ execute:
   echo: false
 ---
 
-```{python find and match PTMs from combos_1_interplay to combos_2_interplay then calculate I, ACI, NI}
+```{python find and match PTMs from combos_1_interplay to combos_2_interplay}
+import pandas as pd
 import os
 import re
-import numpy as np
-import pandas as pd
 
-# Function to find matching file pairs
+def parse_ptms(proteoform):
+    """ Extract PTMs from the proteoform string using a regular expression. """
+    ptms = re.findall(r'([A-Z]\d*[^A-Z]*)', proteoform)
+    return ptms
+
 def find_matching_files(combos_1_dir, combos_2_dir):
-    combos_1_files = {f.replace('_combos_1.csv', ''): os.path.join(combos_1_dir, f) 
+    """ Find matching file pairs between two directories based on file naming conventions. """
+    combos_1_files = {f.replace('_combos_1.csv', ''): os.path.join(combos_1_dir, f)
                       for f in os.listdir(combos_1_dir) if f.endswith('_combos_1.csv')}
-    combos_2_files = {f.replace('_combos_2.csv', ''): os.path.join(combos_2_dir, f) 
+    combos_2_files = {f.replace('_combos_2.csv', ''): os.path.join(combos_2_dir, f)
                       for f in os.listdir(combos_2_dir) if f.endswith('_combos_2.csv')}
 
-    matched_files = [(combos_1_files[k], combos_2_files[k]) 
+    matched_files = [(combos_1_files[k], combos_2_files[k])
                      for k in combos_1_files if k in combos_2_files]
     return matched_files
 
-# Interplay calculation function, adjusted for the actual column names and numpy usage
-def process_combo_pair(combos_1_file, combos_2_file, output_dir):
-    # Load combo files
-    df_combos_1 = pd.read_csv(combos_1_file)
-    df_combos_2 = pd.read_csv(combos_2_file)
+def safe_ptm_split(ptm_comb):
+    """ Safely split the PTM combination string into PTM1 and PTM2, handling cases with fewer than 2 PTMs. """
+    ptms = parse_ptms(ptm_comb)
+    return pd.Series([ptms[0] if len(ptms) > 0 else None, ptms[1] if len(ptms) > 1 else None])
 
-    # Rename columns based on the actual file structure
-    df_combos_1.rename(columns={'PTM Combination': 'discrete_mod', 'Percentage Abundance': 'discrete_abundance'}, inplace=True)
-    df_combos_2.rename(columns={'PTM Combination': 'binary_comb', 'Percentage Abundance': 'binary_abundance'}, inplace=True)
+def process_files(combos_1_file, combos_2_file, output_dir):
+    """ Process each file pair to merge and output the required data. """
+    df1 = pd.read_csv(combos_1_file)
+    df2 = pd.read_csv(combos_2_file)
 
-    # Split PTM combinations in combos_2
-    df_combos_2[['PTM_1', 'PTM_2']] = df_combos_2['binary_comb'].apply(
-        lambda x: pd.Series(re.findall(r'([A-Z]\d*[^A-Z]*)', x)[:2])
-    )
+    # Apply safe splitting to both DataFrames
+    df2[['PTM1', 'PTM2']] = df2['PTM Combination'].apply(safe_ptm_split)
+    df1[['PTM1', 'PTM2']] = df1['PTM Combination'].apply(safe_ptm_split)
 
-    # Merge to get abundances for each PTM in the combinations
-    df_combos_2 = df_combos_2.merge(df_combos_1, left_on='PTM_1', right_on='discrete_mod', how='left')\
-                             .rename(columns={'discrete_abundance': 'discrete_abundance_1'})
-    df_combos_2 = df_combos_2.merge(df_combos_1, left_on='PTM_2', right_on='discrete_mod', how='left')\
-                             .rename(columns={'discrete_abundance': 'discrete_abundance_2'})
+    # Create lookup maps for PTM1 and PTM2 using PTM Combination as keys and Percentage Abundance as values
+    abundance_lookup = df1.set_index('PTM Combination')['Percentage Abundance']
 
-    # Calculate interplay score using numpy for the natural log function
-    df_combos_2['interplay'] = np.log(df_combos_2['binary_abundance'] / 
-                                      (df_combos_2['discrete_abundance_1'] * df_combos_2['discrete_abundance_2']))
+    # Use the map to replace PTM1 and PTM2 values in df2 with abundance values
+    df2['PTM1_abundance'] = df2['PTM1'].map(abundance_lookup)
+    df2['PTM2_abundance'] = df2['PTM2'].map(abundance_lookup)
+
+    # Save the merged data with a new filename
+    new_file_name = os.path.basename(combos_2_file).replace('_sorted_proteoform_combos_2.csv', '_interplay_scores.csv')
+    output_file = os.path.join(output_dir, new_file_name)
+    df2.to_csv(output_file, index=False)
+
+base_dir = os.path.join(os.getcwd())
+
+def main():
+    """ Main function to set up directory paths and process all matched files. """
+    combos_1_dir = os.path.join(base_dir, 'output', 'combos', 'combos_1_interplay')
+    combos_2_dir = os.path.join(base_dir, 'output', 'combos', 'combos_2_interplay')
+    output_dir = os.path.join(base_dir, 'output', 'interplay_scores')
     
-    # Calculate abundance-corrected interplay score
-    df_combos_2['abundance_corrected_interplay'] = np.log(
-      (df_combos_2['binary_abundance'] *
-       (1 - df_combos_2['discrete_abundance_1']) *
-       (1 - df_combos_2['discrete_abundance_2'])) /
-      (df_combos_2['discrete_abundance_1'] *
-       df_combos_2['discrete_abundance_2'] *
-       (df_combos_2['discrete_abundance_1'] - df_combos_2['binary_abundance']) *
-       (df_combos_2['discrete_abundance_2'] - df_combos_2['binary_abundance']))
-    )
-      
-    # Calculate normalized interplay score
-    # df_combos_2['normalized_interplay'] = ((np.log(df_combos_2['binary_abundance'] / 
-    #                                   (df_combos_2['discrete_abundance_1'] * df_combos_2['discrete_abundance_2'])) /
-    #                                        (-np.log(df_combos_2['binary_abundance']))))
-                                           
-    df_combos_2['normalized_interplay'] = df_combos_2.apply(
-        lambda row: -1 if row['binary_abundance'] == 0 and row['discrete_abundance_1'] > 0 and row['discrete_abundance_2'] > 0 else
-        np.log(row['binary_abundance'] / (row['discrete_abundance_1'] * row['discrete_abundance_2'])) / (-np.log(row['binary_abundance'])),
-        axis=1
-    )
-
-    # Ensure the output directory exists
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Construct the output file path and save the processed DataFrame
-    output_file = os.path.basename(combos_2_file).replace('_combos_2.csv', '_interplay_scores.csv')
-    output_file_path = os.path.join(output_dir, output_file)
-    df_combos_2.to_csv(output_file_path, index=False)
-    print(f'Saved processed data to: {output_file_path}')
+    matched_files = find_matching_files(combos_1_dir, combos_2_dir)
+    for combos_1_file, combos_2_file in matched_files:
+        process_files(combos_1_file, combos_2_file, output_dir)
 
-# Paths are set as per the current working directory and the specified structure
-base_dir = os.path.join(os.getcwd())  # Using the current working directory as base
-combos_1_dir = os.path.join(base_dir, 'output', 'combos', 'combos_1_interplay')
-combos_2_dir = os.path.join(base_dir, 'output', 'combos', 'combos_2_interplay')
-output_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Output directory for interplay scores
+if __name__ == '__main__':
+    main()
+```
 
-# Find matching files and process each pair
-matched_files = find_matching_files(combos_1_dir, combos_2_dir)
-for combos_1_file, combos_2_file in matched_files:
-    process_combo_pair(combos_1_file, combos_2_file, output_dir)
+```{python}
+import os
+import pandas as pd
+import numpy as np
 
+def calculate_scores(df):
+    try:
+        # Calculate Score 1
+        df['Interplay'] = np.log(df['Percentage Abundance'] / (df['PTM1_abundance'] * df['PTM2_abundance']))
+        
+        # Calculate Score 2
+        numerator = (df['Percentage Abundance'] * (1 - df['PTM1_abundance']) * (1 - df['PTM2_abundance']) * df['Percentage Abundance'])
+        denominator = (df['PTM1_abundance'] * df['PTM2_abundance'] * (df['PTM1_abundance'] - df['Percentage Abundance']) * (df['PTM2_abundance'] - df['Percentage Abundance']))
+        df['Abundance_Corrected Interplay'] = np.log(numerator / denominator)
+        
+        # Calculate Score 3
+        df['Normalized Interplay'] = df['Interplay'] / (-np.log(df['Percentage Abundance']))
+    
+    return df
 
+def process_files():
+    basedir = os.getcwd()  # Get the current working directory
+    inputdir = os.path.join(basedir, 'output', 'interplay_scores')  # Set the target directory
+    
+    for root, dirs, files in os.walk(inputdir):  # Start from the input directory
+        for file in files:
+            if file.endswith("_interplay_scores.csv"):
+                filepath = os.path.join(root, file)
+                df = pd.read_csv(filepath)
+                
+                # Preprocess columns to avoid issues with log(0)
+                df.replace(0, np.finfo(float).eps, inplace=True)
+                
+                # Calculate scores
+                df = calculate_scores(df)
+                
+                # Save the updated dataframe back to the CSV
+                df.to_csv(filepath, index=False)
+                print(f'Processed {filepath}')
+
+# Run the processing function
+process_files()
 ```
 
 ```{python process files to calculate averages of interplay scores}
@@ -176,7 +198,7 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
 if __name__ == "__main__":
     base_dir = os.getcwd()  # Base directory using getcwd()
     input_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Relative path to input directory
-    output_dir = os.path.join(base_dir, 'output', 'interplay_scores', 'averaged_interplay_scores')  # Relative path to output directory
+    output_dir = os.path.join(base_dir, 'output', 'averaged_interplay_scores')  # Relative path to output directory
     annotation_path = os.path.join(base_dir, 'output', 'interplay_scores', 'experimental_annotation.csv')
     annotation_df = pd.read_csv(annotation_path)
     process_files(annotation_df, base_dir, input_dir, output_dir)
