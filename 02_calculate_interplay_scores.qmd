@@ -8,7 +8,7 @@ execute:
   echo: false
 ---
 
-```{python find and match PTMs from combos1 to combos2 then calculate I, ACI, NI}
+```{python find and match PTMs from combos_1_interplay to combos_2_interplay then calculate I, ACI, NI}
 import os
 import re
 import numpy as np
@@ -62,9 +62,15 @@ def process_combo_pair(combos_1_file, combos_2_file, output_dir):
     )
       
     # Calculate normalized interplay score
-    df_combos_2['normalized_interplay'] = ((np.log(df_combos_2['binary_abundance'] / 
-                                      (df_combos_2['discrete_abundance_1'] * df_combos_2['discrete_abundance_2'])) /
-                                           (-np.log(df_combos_2['binary_abundance']))))
+    # df_combos_2['normalized_interplay'] = ((np.log(df_combos_2['binary_abundance'] / 
+    #                                   (df_combos_2['discrete_abundance_1'] * df_combos_2['discrete_abundance_2'])) /
+    #                                        (-np.log(df_combos_2['binary_abundance']))))
+                                           
+    df_combos_2['normalized_interplay'] = df_combos_2.apply(
+        lambda row: -1 if row['binary_abundance'] == 0 and row['discrete_abundance_1'] > 0 and row['discrete_abundance_2'] > 0 else
+        np.log(row['binary_abundance'] / (row['discrete_abundance_1'] * row['discrete_abundance_2'])) / (-np.log(row['binary_abundance'])),
+        axis=1
+    )
 
     # Ensure the output directory exists
     if not os.path.exists(output_dir):
@@ -78,8 +84,8 @@ def process_combo_pair(combos_1_file, combos_2_file, output_dir):
 
 # Paths are set as per the current working directory and the specified structure
 base_dir = os.path.join(os.getcwd())  # Using the current working directory as base
-combos_1_dir = os.path.join(base_dir, 'output', 'combos', 'combos_1')
-combos_2_dir = os.path.join(base_dir, 'output', 'combos', 'combos_2')
+combos_1_dir = os.path.join(base_dir, 'output', 'combos', 'combos_1_interplay')
+combos_2_dir = os.path.join(base_dir, 'output', 'combos', 'combos_2_interplay')
 output_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Output directory for interplay scores
 
 # Find matching files and process each pair

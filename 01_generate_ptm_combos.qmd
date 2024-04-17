@@ -103,3 +103,115 @@ if __name__ == "__main__":
     main()
     
 ```
+
+```{python process up discrete PTMs}
+import os
+import pandas as pd
+import re
+
+def add_missing_ptms(file_path, ptms, output_dir):
+    """ Add missing PTMs to the dataset with zero abundance and save to new file. """
+    # Read existing data
+    data = pd.read_csv(file_path)
+    existing_ptms = set(data['PTM Combination'])
+    
+    # Determine missing PTMs and prepare new rows
+    missing_ptms = [ptm for ptm in ptms if ptm not in existing_ptms]
+    missing_data = pd.DataFrame({
+        "PTM Combination": missing_ptms,
+        "Percentage Abundance": [0]*len(missing_ptms)
+    })
+    
+    # Combine old and new data, then save
+    updated_data = pd.concat([data, missing_data], ignore_index=True)
+    new_file_path = os.path.join(output_dir, os.path.basename(file_path))
+    updated_data.to_csv(new_file_path, index=False)
+    print(f"Updated file saved to {new_file_path}")
+
+# Set up directory paths
+base_dir = os.path.join(os.getcwd())
+input_dir = os.path.join(base_dir, "output", "combos", "combos_1")
+output_dir = os.path.join(base_dir, "output", "combos", "combos_1_interplay")
+os.makedirs(output_dir, exist_ok=True)
+
+# Define all PTMs
+specified_ptms = [
+    "K4me1", "K4un", "R8me1", "R8un", "K9me1", "K9me2", "K9me3", "K9ac", "K9un", 
+    "K14me1", "K14me2", "K14me3", "K14ac", "K14un", "R17me1", "R17me2", "R17un", 
+    "K18me1", "K18me2", "K18ac", "K18un", "K23me1", "K23me2", "K23me3", "K23ac", 
+    "K23un", "R26me1", "R26me2", "R26un", "K27me1", "K27me2", "K27me3", "K27ac", 
+    "K27un", "K36me1", "K36me2", "K36me3", "K36un"
+]
+
+# Process each file in the input directory
+for file_name in os.listdir(input_dir):
+    if file_name.endswith('.csv'):
+        file_path = os.path.join(input_dir, file_name)
+        add_missing_ptms(file_path, specified_ptms, output_dir)
+
+```
+
+```{python process up binary combinations to represent mutual exclusion}
+import os
+import pandas as pd
+import re
+
+def extract_position(ptm):
+    """ Extract numerical position from a PTM string using regex. """
+    match = re.search(r"\d+", ptm)
+    return int(match.group()) if match else None
+
+def generate_valid_combinations(ptms):
+    """ Generate all valid PTM combinations based on the position and residue rules. """
+    valid_combinations = []
+    for i, ptm1 in enumerate(ptms):
+        pos1 = extract_position(ptm1)
+        for ptm2 in ptms[i+1:]:
+            pos2 = extract_position(ptm2)
+            if pos1 < pos2:  # Ensure the position of the first is less than the second
+                valid_combinations.append(ptm1 + ptm2)
+    return valid_combinations
+
+def add_missing_combinations(file_path, valid_combinations, output_dir):
+    """ Add missing PTM combinations to the dataset with zero abundance and save to new file. """
+    # Read existing data
+    data = pd.read_csv(file_path)
+    existing_combinations = set(data['PTM Combination'])
+    
+    # Determine missing combinations and prepare new rows
+    missing_combinations = [combo for combo in valid_combinations if combo not in existing_combinations]
+    missing_data = pd.DataFrame({
+        "PTM Combination": missing_combinations,
+        "Percentage Abundance": [0]*len(missing_combinations)
+    })
+    
+    # Combine old and new data, then save
+    updated_data = pd.concat([data, missing_data], ignore_index=True)
+    new_file_path = os.path.join(output_dir, os.path.basename(file_path))
+    updated_data.to_csv(new_file_path, index=False)
+    print(f"Updated file saved to {new_file_path}")
+
+# Set up directory paths
+base_dir = os.path.join(os.getcwd())
+input_dir = os.path.join(base_dir, "output", "combos", "combos_2")
+output_dir = os.path.join(base_dir, "output", "combos", "combos_2_interplay")
+os.makedirs(output_dir, exist_ok=True)
+
+# Define all PTMs and generate valid combinations
+specified_ptms = [
+    "K4me1", "K4un", "R8me1", "R8un", "K9me1", "K9me2", "K9me3", "K9ac", "K9un", 
+    "K14me1", "K14me2", "K14me3", "K14ac", "K14un", "R17me1", "R17me2", "R17un", 
+    "K18me1", "K18me2", "K18ac", "K18un", "K23me1", "K23me2", "K23me3", "K23ac", 
+    "K23un", "R26me1", "R26me2", "R26un", "K27me1", "K27me2", "K27me3", "K27ac", 
+    "K27un", "K36me1", "K36me2", "K36me3", "K36un"
+]
+valid_combinations = generate_valid_combinations(specified_ptms)
+
+# Process each file in the input directory
+for file_name in os.listdir(input_dir):
+    if file_name.endswith('.csv'):
+        file_path = os.path.join(input_dir, file_name)
+        add_missing_combinations(file_path, valid_combinations, output_dir)
+
+
+```
