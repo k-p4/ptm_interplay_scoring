@@ -75,47 +75,52 @@ if __name__ == '__main__':
 ```
 
 ```{python}
-import os
 import pandas as pd
 import numpy as np
+import glob
+import os
 
-def calculate_scores(df):
-    try:
-        # Calculate Score 1
-        df['Interplay'] = np.log(df['Percentage Abundance'] / (df['PTM1_abundance'] * df['PTM2_abundance']))
-        
-        # Calculate Score 2
-        numerator = (df['Percentage Abundance'] * (1 - df['PTM1_abundance']) * (1 - df['PTM2_abundance']) * df['Percentage Abundance'])
-        denominator = (df['PTM1_abundance'] * df['PTM2_abundance'] * (df['PTM1_abundance'] - df['Percentage Abundance']) * (df['PTM2_abundance'] - df['Percentage Abundance']))
-        df['Abundance_Corrected Interplay'] = np.log(numerator / denominator)
-        
-        # Calculate Score 3
-        df['Normalized Interplay'] = df['Interplay'] / (-np.log(df['Percentage Abundance']))
-    
+# Step 1: Define the directory and pattern for CSV files
+basre_dir = os.getcwd()
+directory = os.path.join(base_dir, 'output', 'interplay_scores')
+file_pattern = os.path.join(directory, '*_interplay_scores.csv')
+
+# Step 2: Function to calculate new columns
+def calculate_interplay_scores(df):
+    # Calculate 'interplay'
+    df['interplay'] = np.log(df['Percentage Abundance'] / (df['PTM1_abundance'] * df['PTM2_abundance']))
+
+    # Calculate 'abundance_corrected_interplay'
+    df['abundance_corrected_interplay'] = np.log((df['Percentage Abundance'] * (1 - df['PTM1_abundance']) * (1 - df['PTM2_abundance']) * df['Percentage Abundance']) /
+                                                 (df['PTM1_abundance'] * df['PTM2_abundance'] * (df['PTM1_abundance'] - df['Percentage Abundance']) * (df['PTM2_abundance'] - df['Percentage Abundance'])))
+
+    # Calculate 'normalized_interplay'
+    df['normalized_interplay'] = df['interplay'] / (-np.log(df['Percentage Abundance']))
+
+    # Handling special cases:
+    # Case 1
+    mask1 = (df['Percentage Abundance'] == 0) & (df['PTM1_abundance'] > 0) & (df['PTM2_abundance'] > 0)
+    df.loc[mask1, ['interplay', 'abundance_corrected_interplay']] = np.nan
+    df.loc[mask1, 'normalized_interplay'] = -1
+
+    # Case 2
+    mask2 = (df['Percentage Abundance'] == 1) & (df['PTM1_abundance'] == 1) & (df['PTM2_abundance'] == 1)
+    df.loc[mask2, 'normalized_interplay'] = 1
+
+    # Case 3
+    mask3 = (df['PTM1_abundance'] == 0) | (df['PTM2_abundance'] == 0)
+    df.loc[mask3, ['interplay', 'abundance_corrected_interplay', 'normalized_interplay']] = np.nan
+
     return df
 
-def process_files():
-    basedir = os.getcwd()  # Get the current working directory
-    inputdir = os.path.join(basedir, 'output', 'interplay_scores')  # Set the target directory
-    
-    for root, dirs, files in os.walk(inputdir):  # Start from the input directory
-        for file in files:
-            if file.endswith("_interplay_scores.csv"):
-                filepath = os.path.join(root, file)
-                df = pd.read_csv(filepath)
-                
-                # Preprocess columns to avoid issues with log(0)
-                df.replace(0, np.finfo(float).eps, inplace=True)
-                
-                # Calculate scores
-                df = calculate_scores(df)
-                
-                # Save the updated dataframe back to the CSV
-                df.to_csv(filepath, index=False)
-                print(f'Processed {filepath}')
+# Step 3: Process each CSV file
+for file_path in glob.glob(file_pattern):
+    df = pd.read_csv(file_path)
+    df = calculate_interplay_scores(df)
+    df.to_csv(file_path, index=False)  # Save the updated DataFrame back to CSV without the index column
 
-# Run the processing function
-process_files()
+print("All files have been processed and updated.")
+
 ```
 
 ```{python process files to calculate averages of interplay scores}
