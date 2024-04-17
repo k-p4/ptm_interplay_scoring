@@ -74,53 +74,58 @@ if __name__ == '__main__':
     main()
 ```
 
-```{python}
+```{python calculate interplay scores}
 import pandas as pd
 import numpy as np
 import glob
 import os
 
 # Step 1: Define the directory and pattern for CSV files
-basre_dir = os.getcwd()
+base_dir = os.getcwd()
 directory = os.path.join(base_dir, 'output', 'interplay_scores')
 file_pattern = os.path.join(directory, '*_interplay_scores.csv')
 
-# Step 2: Function to calculate new columns
-def calculate_interplay_scores(df):
-    # Calculate 'interplay'
-    df['interplay'] = np.log(df['Percentage Abundance'] / (df['PTM1_abundance'] * df['PTM2_abundance']))
-
-    # Calculate 'abundance_corrected_interplay'
-    df['abundance_corrected_interplay'] = np.log((df['Percentage Abundance'] * (1 - df['PTM1_abundance']) * (1 - df['PTM2_abundance']) * df['Percentage Abundance']) /
-                                                 (df['PTM1_abundance'] * df['PTM2_abundance'] * (df['PTM1_abundance'] - df['Percentage Abundance']) * (df['PTM2_abundance'] - df['Percentage Abundance'])))
-
-    # Calculate 'normalized_interplay'
-    df['normalized_interplay'] = df['interplay'] / (-np.log(df['Percentage Abundance']))
-
-    # Handling special cases:
-    # Case 1
+# Step 2: Function to calculate new columns, optimized for pre-handling special cases
+def calculate_interplay_scores_optimized(df, tolerance=1e-9):
+    # Pre-handle special cases
+    # Case 1: Zero Percentage Abundance
     mask1 = (df['Percentage Abundance'] == 0) & (df['PTM1_abundance'] > 0) & (df['PTM2_abundance'] > 0)
-    df.loc[mask1, ['interplay', 'abundance_corrected_interplay']] = np.nan
-    df.loc[mask1, 'normalized_interplay'] = -1
-
-    # Case 2
-    mask2 = (df['Percentage Abundance'] == 1) & (df['PTM1_abundance'] == 1) & (df['PTM2_abundance'] == 1)
+    df.loc[mask1, ['interplay', 'abundance_corrected_interplay', 'normalized_interplay']] = [np.nan, np.nan, -1]
+    
+    # Case 2: All values are 1
+    mask2 = (abs(df['Percentage Abundance'] - 1) < tolerance) & \
+            (abs(df['PTM1_abundance'] - 1) < tolerance) & \
+            (abs(df['PTM2_abundance'] - 1) < tolerance)
     df.loc[mask2, 'normalized_interplay'] = 1
-
-    # Case 3
+    
+    # Case 3: Zero abundance for PTM1 or PTM2
     mask3 = (df['PTM1_abundance'] == 0) | (df['PTM2_abundance'] == 0)
     df.loc[mask3, ['interplay', 'abundance_corrected_interplay', 'normalized_interplay']] = np.nan
-
+    
+    # Calculate remaining valid cases
+    valid_mask = ~(mask1 | mask2 | mask3)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        df.loc[valid_mask, 'interplay'] = np.log(df.loc[valid_mask, 'Percentage Abundance'] / 
+                                                 (df.loc[valid_mask, 'PTM1_abundance'] * df.loc[valid_mask, 'PTM2_abundance']))
+        df.loc[valid_mask, 'abundance_corrected_interplay'] = np.log((df.loc[valid_mask, 'Percentage Abundance'] * 
+                                                                      (1 - df.loc[valid_mask, 'PTM1_abundance']) * 
+                                                                      (1 - df.loc[valid_mask, 'PTM2_abundance']) * 
+                                                                      df.loc[valid_mask, 'Percentage Abundance']) /
+                                                                     (df.loc[valid_mask, 'PTM1_abundance'] * 
+                                                                      df.loc[valid_mask, 'PTM2_abundance'] * 
+                                                                      (df.loc[valid_mask, 'PTM1_abundance'] - df.loc[valid_mask, 'Percentage Abundance']) * 
+                                                                      (df.loc[valid_mask, 'PTM2_abundance'] - df.loc[valid_mask, 'Percentage Abundance'])))
+        df.loc[valid_mask, 'normalized_interplay'] = df.loc[valid_mask, 'interplay'] / \
+                                                     (-np.log(df.loc[valid_mask, 'Percentage Abundance']))
     return df
 
 # Step 3: Process each CSV file
 for file_path in glob.glob(file_pattern):
     df = pd.read_csv(file_path)
-    df = calculate_interplay_scores(df)
+    df = calculate_interplay_scores_optimized(df)
     df.to_csv(file_path, index=False)  # Save the updated DataFrame back to CSV without the index column
 
 print("All files have been processed and updated.")
-
 ```
 
 ```{python process files to calculate averages of interplay scores}
@@ -134,13 +139,9 @@ def parse_ptms(proteoform):
     return ptms[:2]  # Return only the first two PTMs found
 
 def process_files(annotation_df, base_dir, input_dir, output_dir):
-    # Construct full input and output paths
-    input_path = os.path.join(base_dir, input_dir)
-    output_path = os.path.join(base_dir, output_dir)
-
     # Ensure output directory exists
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     
     # Dictionary to store dataframes for each condition and histone for processing
     condition_histone_dfs = {}
@@ -148,7 +149,7 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
     # Loop through each file and process
     for index, row in annotation_df.iterrows():
         file_name = row['filename']
-        file_path = os.path.join(input_path, file_name)
+        file_path = os.path.join(input_dir, file_name)
         condition = row['condition']
         sample_name = row['sample_name']
         biorep = row['biorep']
@@ -158,6 +159,10 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
         # Load the CSV file
         try:
             data_df = pd.read_csv(file_path)
+            print(f"Columns in {file_name}: {data_df.columns.tolist()}")  # Debugging line
+
+            # Rename 'PTM Combination' to 'binary_comb' for uniformity
+            data_df.rename(columns={'PTM Combination': 'binary_comb'}, inplace=True)
 
             # Pre-rename all columns to include unique suffix, except 'binary_comb'
             rename_columns = {col: f'{col}_{unique_suffix}' for col in data_df.columns if col != 'binary_comb'}
@@ -172,6 +177,9 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
 
         except FileNotFoundError:
             print(f"File not found: {file_path}")
+            continue
+        except Exception as e:
+            print(f"Error processing file {file_name}: {e}")
             continue
 
     # Process each dataframe to fill NAs and calculate averages
@@ -196,8 +204,8 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
 
         # Save to CSV
         filename = f'{condition}_{histone}_avg_interplay_scores.csv'
-        final_df.to_csv(os.path.join(output_path, filename), index=False)
-        print(f'Saved processed data to: {os.path.join(output_path, filename)}')
+        final_df.to_csv(os.path.join(output_dir, filename), index=False)
+        print(f'Saved processed data to: {os.path.join(output_dir, filename)}')
 
 # Usage
 if __name__ == "__main__":
@@ -207,7 +215,8 @@ if __name__ == "__main__":
     annotation_path = os.path.join(base_dir, 'output', 'interplay_scores', 'experimental_annotation.csv')
     annotation_df = pd.read_csv(annotation_path)
     process_files(annotation_df, base_dir, input_dir, output_dir)
-    
+
 print("Interplay scores averaging completed.")
+
 ```
 

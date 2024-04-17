@@ -14,24 +14,25 @@ import pandas as pd
 import numpy as np
 import re
 
+# Define all PTMs
+specified_ptms = [
+    "K4me1", "K4un", "R8me1", "R8un", "K9me1", "K9me2", "K9me3", "K9ac", "K9un", 
+    "K14me1", "K14me2", "K14me3", "K14ac", "K14un", "R17me1", "R17me2", "R17un", 
+    "K18me1", "K18me2", "K18ac", "K18un", "K23me1", "K23me2", "K23me3", "K23ac", 
+    "K23un", "R26me1", "R26me2", "R26un", "K27me1", "K27me2", "K27me3", "K27ac", 
+    "K27un", "K36me1", "K36me2", "K36me3", "K36un"
+]
+
 # Determine the base directory dynamically from the current working directory
 base_dir = os.getcwd()
 
 # Paths relative to the current working directory
 input_dir = os.path.join(base_dir, "output", "interplay_scores")
-output_dir = os.path.join(base_dir, "output", "interplay_scores", "interplay_matrices")
+output_dir = os.path.join(base_dir, "output", "interplay_matrices")
 
 # Create the output directory if it doesn't exist
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-
-# Helper function to extract numeric position from PTM identifiers
-def extract_position(ptm_id):
-    # Use regular expression to find numbers between a capital letter and lowercase letters
-    match = re.search(r'([A-Z])(\d+)([a-z])', ptm_id)
-    if match:
-        return int(match.group(2))  # Return the numeric part as an integer
-    return None  # Return None if no matching pattern is found
 
 # Function to process each CSV file
 def process_csv(file_path):
@@ -39,14 +40,16 @@ def process_csv(file_path):
     data = pd.read_csv(file_path)
     
     # Define the set of all PTM modifications as both rows and columns
-    ptms = set(data['PTM_1']).union(set(data['PTM_2']))
-    sorted_ptms = sorted(ptms, key=extract_position)  # Sort PTMs by position
-    
+    ptms = set(data['PTM1']).union(set(data['PTM2']))
+
     # Create the pivot table with the same PTMs on both axes
-    matrix = data.pivot_table(index='PTM_1', columns='PTM_2', values='normalized_interplay', aggfunc='mean').reindex(index=sorted_ptms, columns=sorted_ptms)
+    matrix = data.pivot_table(index='PTM1', columns='PTM2', values='normalized_interplay', aggfunc='mean')
+
+    # Reindex the matrix to match the specified order of PTMs
+    matrix_reindexed = matrix.reindex(index=specified_ptms, columns=specified_ptms)
 
     # Fill missing values with NaN
-    matrix_filled = matrix.fillna(np.nan)
+    matrix_filled = matrix_reindexed.fillna(np.nan)
     
     # Define the output file path
     file_name = os.path.basename(file_path)
@@ -72,24 +75,25 @@ import pandas as pd
 import numpy as np
 import re
 
+# List of predefined PTMs for ordering
+specified_ptms = [
+    "K4me1", "K4un", "R8me1", "R8un", "K9me1", "K9me2", "K9me3", "K9ac", "K9un", 
+    "K14me1", "K14me2", "K14me3", "K14ac", "K14un", "R17me1", "R17me2", "R17un", 
+    "K18me1", "K18me2", "K18ac", "K18un", "K23me1", "K23me2", "K23me3", "K23ac", 
+    "K23un", "R26me1", "R26me2", "R26un", "K27me1", "K27me2", "K27me3", "K27ac", 
+    "K27un", "K36me1", "K36me2", "K36me3", "K36un"
+]
+
 # Determine the base directory dynamically from the current working directory
 base_dir = os.getcwd()
 
 # Paths relative to the current working directory
-input_dir = os.path.join(base_dir, "output", "interplay_scores", 'averaged_interplay_scores')
-output_dir = os.path.join(base_dir, "output", "interplay_scores", 'averaged_interplay_scores', "averaged_interplay_matrices")
+input_dir = os.path.join(base_dir, "output", 'averaged_interplay_scores')
+output_dir = os.path.join(base_dir, "output", "averaged_interplay_matrices")
 
 # Create the output directory if it doesn't exist
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-
-# Helper function to extract numeric position from PTM identifiers
-def extract_position(ptm_id):
-    # Use regular expression to find numbers between a capital letter and lowercase letters
-    match = re.search(r'([A-Z])(\d+)([a-z])', ptm_id)
-    if match:
-        return int(match.group(2))  # Return the numeric part as an integer
-    return None  # Return None if no matching pattern is found
 
 # Function to process each CSV file
 def process_csv(file_path):
@@ -98,13 +102,15 @@ def process_csv(file_path):
     
     # Define the set of all PTM modifications as both rows and columns
     ptms = set(data['PTM_1']).union(set(data['PTM_2']))
-    sorted_ptms = sorted(ptms, key=extract_position)  # Sort PTMs by position
-    
+
     # Create the pivot table with the same PTMs on both axes
-    matrix = data.pivot_table(index='PTM_1', columns='PTM_2', values='avg_normalized_interplay', aggfunc='mean').reindex(index=sorted_ptms, columns=sorted_ptms)
+    matrix = data.pivot_table(index='PTM_1', columns='PTM_2', values='avg_normalized_interplay', aggfunc='mean')
+
+    # Reindex the matrix to match the specified order of PTMs
+    matrix_reindexed = matrix.reindex(index=specified_ptms, columns=specified_ptms)
 
     # Fill missing values with NaN
-    matrix_filled = matrix.fillna(np.nan)
+    matrix_filled = matrix_reindexed.fillna(np.nan)
     
     # Define the output file path
     file_name = os.path.basename(file_path)
@@ -120,7 +126,7 @@ for file in os.listdir(input_dir):
         process_csv(file_path)
         print(f"Processed and saved matrix for {file}")
 
-print("All interplay files processed successfully.")
+print("All averaged interplay files processed successfully.")
 
 ```
 
@@ -130,8 +136,8 @@ library(corrplot)
 library(RColorBrewer)
 
 # Define input and output directories
-input_dir <- "./output/interplay_scores/interplay_matrices/averaged_interplay_matrices"
-output_dir <- "./figs/interplay_matrices/averaged_interplay_matrices"
+input_dir <- "./output/averaged_interplay_matrices"
+output_dir <- "./figs/averaged_interplay_matrices"
 
 # Ensure the output directory exists
 if (!dir.exists(output_dir)) {
@@ -146,18 +152,13 @@ process_file <- function(file_path) {
   # Read the matrix from the file
   data <- read.csv(file_path, check.names = FALSE)
   
-  # Replace all NA/missing values with a unique placeholder
+  # Replace all NA/missing values with a random unique placeholder
   data[is.na(data)] <- 3.14159265222
   
-  # Create a vector of row names from the first column
+  # Create a vector of row names from the first column and then remove it from data
   row_names <- data[, 1]
-  
-  # Drop the first row
-  data <- data[-1, ]
-  
-  # Drop the first column
   data <- data[, -1]
-  
+
   # Convert the cleaned data frame to a matrix
   matrix_data <- as.matrix(data)
   
@@ -165,18 +166,20 @@ process_file <- function(file_path) {
   matrix_data[matrix_data == 3.14159265222] <- NA
   
   # Set row names for the matrix
-  row.names(matrix_data) <- row_names[-1]  # Exclude the first element because the first row was dropped
+  row.names(matrix_data) <- row_names  # No need to drop any row names
   
   # Generate SVG file
   svg_filename <- paste(output_dir, "/", tools::file_path_sans_ext(basename(file_path)), "_corrplot.svg", sep = "")
   svg(svg_filename)
-  corrplot(matrix_data, method = 'color', col = brewer.pal(n = 9, name = "YlGnBu"), 
-           type = "upper", diag = FALSE, na.label = "×", cl.lim = c(-1, 1))
+  kp_palette <- colorRampPalette(brewer.pal(9, "YlGnBu"))(n = 200)
+  
+  corrplot(matrix_data, method = 'color', col = kp_palette,
+           type = "upper", diag = TRUE, na.label = "×",
+           cl.lim = c(-1, 1), cl.breaks = c(-1, 0, 1))
   dev.off()  # Close the SVG device
 }
 
 # Process all files
 lapply(files, process_file)
 cat("All plots have been generated and saved to:", output_dir, "\n")
-
 ```
