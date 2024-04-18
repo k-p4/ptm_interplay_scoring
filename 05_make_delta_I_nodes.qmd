@@ -1,0 +1,128 @@
+---
+title: "05_make_delta_I_nodes"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python make delta I source and target nodes with delta I values for each biorep}
+import os
+import pandas as pd
+
+# Set your base directory and input/output directories
+basedir = os.path.join(os.getcwd())  # Update this to your base directory path
+input_dir = os.path.join(basedir, 'output', 'delta_I_scores')  # Subdirectory with input CSV files
+output_dir = os.path.join(basedir, 'output', 'delta_I_nodes')  # Directory where you want to save output files
+os.makedirs(output_dir, exist_ok=True)  # Create output directory if it doesn't exist
+
+# Function to process each CSV file
+def process_csv(file_path):
+    # Read the data
+    data = pd.read_csv(file_path)
+    
+    # Create separate DataFrames for merging
+    df1 = data[['delta_I_(2|1)_PTM_combo', 'delta_I_(2|1)']].copy()
+    df1.columns = ['delta_I_PTM_combos_merged', 'delta_I']
+    df2 = data[['delta_I_(1|2)_PTM_combo', 'delta_I_(1|2)']].copy()
+    df2.columns = ['delta_I_PTM_combos_merged', 'delta_I']
+    
+    # Concatenate the two DataFrames vertically
+    df_combined = pd.concat([df1, df2], ignore_index=True)
+    
+    # Creating source_node and target_node columns
+    df_combined[['source_node', 'target_node']] = df_combined['delta_I_PTM_combos_merged'].str.split('|', expand=True)
+    
+    # Return the processed DataFrame
+    return df_combined
+
+# Process each CSV file in the directory
+for filename in os.listdir(input_dir):
+    if filename.endswith('_sorted_proteoform_delta_I_scores.csv'):
+        file_path = os.path.join(input_dir, filename)
+        processed_data = process_csv(file_path)
+        
+        # Define the output file path
+        output_file_path = os.path.join(output_dir, f'processed_{filename}')
+        
+        # Save the processed data to CSV
+        processed_data.to_csv(output_file_path, index=False)
+        print(f'Processed file saved: {output_file_path}')
+
+print("All files have been processed and saved.")
+
+```
+
+```{python visualize delta I as a directed graph}
+import os
+import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+
+
+# Set your base directory and input/output directories
+basedir = os.path.join(os.getcwd())  # Update this to your base directory path
+inputdir = os.path.join(basedir, 'output', 'delta_I_nodes')  # Subdirectory with input CSV files
+outputdir = os.path.join(basedir, 'figs', 'delta_I_graphs')  # Directory where you want to save output files
+os.makedirs(output_dir, exist_ok=True)  # Create output directory if it doesn't existinput_dir = '/path/to/delta_I_nodes'  # Update this path to 
+
+# Create a list of CSV files in the input directory
+files = [f for f in os.listdir(inputdir) if f.endswith('_sorted_proteoform_delta_I_scores.csv')]
+
+# Node order and positions specified outside the loop for consistency
+specified_ptms = [
+    "K4me1", "K4un", "R8me1", "R8un", "K9me1", "K9me2", "K9me3", "K9ac", "K9un", 
+    "K14me1", "K14me2", "K14me3", "K14ac", "K14un", "R17me1", "R17me2", "R17un", 
+    "K18me1", "K18me2", "K18ac", "K18un", "K23me1", "K23me2", "K23me3", "K23ac", 
+    "K23un", "R26me1", "R26me2", "R26un", "K27me1", "K27me2", "K27me3", "K27ac", 
+    "K27un", "K36me1", "K36me2", "K36me3", "K36un"
+]
+full_node_list = {node: pos for pos, node in enumerate(specified_ptms)}
+
+# Custom color map
+colors_custom = LinearSegmentedColormap.from_list(
+    "custom_neutral_intense_diverging", 
+    ['#c3563c', '#e6b8af', '#f4cccc', '#d9d9d9', '#a4c2f4', '#6fa8dc', '#3f7f93'],
+    N=150
+)
+
+for file in files:
+    filepath = os.path.join(inputdir, file)
+    data = pd.read_csv(filepath)
+
+    G = nx.DiGraph()
+    for _, row in data.iterrows():
+        G.add_edge(row['source_node'], row['target_node'], weight=row['delta_I'])
+
+    ordered_nodes = {node: full_node_list[node] for node in G.nodes() if node in full_node_list}
+    pos = nx.circular_layout(sorted(G.nodes(), key=lambda x: ordered_nodes.get(x, len(ordered_nodes))), scale=2.0)
+
+    scalar_map = plt.cm.ScalarMappable(cmap=colors_custom, norm=plt.Normalize(-1, 1))
+
+    fig, ax = plt.subplots(figsize=(18, 14))
+    nx.draw_networkx_nodes(G, pos, node_size=700, node_color='#cccccc', ax=ax)
+    edges = G.edges(data=True)
+    weights = [5 * abs(e[2]['weight']) for e in edges]
+    alphas = [max(0.5, min(1, 0.5 + 0.5*abs(e[2]['weight']))) for e in edges]
+
+    for (u, v, d), weight, alpha in zip(edges, weights, alphas):
+        color = scalar_map.to_rgba(d['weight'])
+        rad = 0.1 * min(abs(ordered_nodes[v] - ordered_nodes[u]), abs(ordered_nodes[u] - ordered_nodes[v])) / len(ordered_nodes)
+        nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], width=weight, edge_color=color, alpha=alpha,
+                               arrows=True, arrowstyle='-|>', arrowsize=20, connectionstyle=f'arc3,rad={rad}', ax=ax)
+    nx.draw_networkx_labels(G, pos, font_size=12, font_family='sans-serif', ax=ax)
+
+    cbar = plt.colorbar(scalar_map, ax=ax, orientation='vertical', ticks=[-1, -0.5, 0, 0.5, 1])
+    cbar.set_label('Delta I')
+    cbar.ax.set_yticklabels(['-1', '-0.5', '0', '0.5', '1'])
+
+    ax.set_title(f'Directed Graph for {file}')
+    ax.axis('off')
+    plt.savefig(os.path.join(outputdir, f'Graph_{os.path.splitext(file)[0]}.svg'), format='svg')  # Save figure in SVG format
+    plt.close()  # Close the plot to free up memory
+
+print("All files have been processed and the corresponding graphs have been saved.")
+```
