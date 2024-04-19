@@ -8,6 +8,7 @@ execute:
   echo: false
 ---
 
+
 ```{python convert normalized interplay df into matrices for plotting}
 import os
 import pandas as pd
@@ -68,6 +69,7 @@ for file in os.listdir(input_dir):
 print("All interplay files processed successfully.")
 
 ```
+
 
 ```{python convert averaged normalized interplay dfs into matrices for plotting}
 import os
@@ -130,6 +132,7 @@ print("All averaged interplay files processed successfully.")
 
 ```
 
+
 ```{r plot averaged normalized interplay matrices}
 # Load necessary libraries
 library(corrplot)
@@ -181,5 +184,60 @@ process_file <- function(file_path) {
 
 # Process all files
 lapply(files, process_file)
-cat("All plots have been generated and saved to:", output_dir, "\n")
+cat("All averaged NI plots have been generated and saved to:", output_dir, "\n")
+```
+
+
+```{r plot normalized interplay matrices}
+# Load necessary libraries
+library(corrplot)
+library(RColorBrewer)
+
+# Define input and output directories
+input_dir <- "./output/interplay_matrices"
+output_dir <- "./figs/interplay_matrices"
+
+# Ensure the output directory exists
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+
+# Get all CSV files in the input directory
+files <- list.files(input_dir, pattern = "\\.csv$", full.names = TRUE)
+
+# Function to process each file
+process_file <- function(file_path) {
+  # Read the matrix from the file
+  data <- read.csv(file_path, check.names = FALSE)
+  
+  # Replace all NA/missing values with a random unique placeholder
+  data[is.na(data)] <- 3.14159265222
+  
+  # Create a vector of row names from the first column and then remove it from data
+  row_names <- data[, 1]
+  data <- data[, -1]
+
+  # Convert the cleaned data frame to a matrix
+  matrix_data <- as.matrix(data)
+  
+  # Replace all placeholder values back to NA
+  matrix_data[matrix_data == 3.14159265222] <- NA
+  
+  # Set row names for the matrix
+  row.names(matrix_data) <- row_names  # No need to drop any row names
+  
+  # Generate SVG file
+  svg_filename <- paste(output_dir, "/", tools::file_path_sans_ext(basename(file_path)), "_corrplot.svg", sep = "")
+  svg(svg_filename)
+  kp_palette <- colorRampPalette(brewer.pal(9, "YlGnBu"))(n = 200)
+  
+  corrplot(matrix_data, method = 'color', col = kp_palette,
+           type = "upper", diag = TRUE, na.label = "×",
+           cl.lim = c(-1, 1), cl.breaks = c(-1, 0, 1))
+  dev.off()  # Close the SVG device
+}
+
+# Process all files
+lapply(files, process_file)
+cat("All NI plots have been generated and saved to:", output_dir, "\n")
 ```

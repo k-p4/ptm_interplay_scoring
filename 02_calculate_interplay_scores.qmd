@@ -212,7 +212,7 @@ if __name__ == "__main__":
     base_dir = os.getcwd()  # Base directory using getcwd()
     input_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Relative path to input directory
     output_dir = os.path.join(base_dir, 'output', 'averaged_interplay_scores')  # Relative path to output directory
-    annotation_path = os.path.join(base_dir, 'data', 'experimental_annotation.csv')
+    annotation_path = os.path.join(base_dir, 'data', 'experimental_annotations', '02_interplay_averaging_experimental_annotation.csv')
     annotation_df = pd.read_csv(annotation_path)
     process_files(annotation_df, base_dir, input_dir, output_dir)
 
