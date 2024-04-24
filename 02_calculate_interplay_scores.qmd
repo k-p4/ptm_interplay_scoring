@@ -134,19 +134,15 @@ import pandas as pd
 import re
 
 def parse_ptms(proteoform):
-    # Find all post-translational modifications (PTMs) in the proteoform string
     ptms = re.findall(r'([A-Z]\d*[^A-Z]*)', proteoform)
-    return ptms[:2]  # Return only the first two PTMs found
+    return ptms[:2]  # Only the first two PTMs
 
 def process_files(annotation_df, base_dir, input_dir, output_dir):
-    # Ensure output directory exists
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # Dictionary to store dataframes for each condition and histone for processing
     condition_histone_dfs = {}
-
-    # Loop through each file and process
+    
     for index, row in annotation_df.iterrows():
         file_name = row['filename']
         file_path = os.path.join(input_dir, file_name)
@@ -156,19 +152,11 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
         histone = row['histone']
         unique_suffix = f"{sample_name}_rep{biorep}_{histone}"
 
-        # Load the CSV file
         try:
             data_df = pd.read_csv(file_path)
-            print(f"Columns in {file_name}: {data_df.columns.tolist()}")  # Debugging line
-
-            # Rename 'PTM Combination' to 'binary_comb' for uniformity
             data_df.rename(columns={'PTM Combination': 'binary_comb'}, inplace=True)
-
-            # Pre-rename all columns to include unique suffix, except 'binary_comb'
             rename_columns = {col: f'{col}_{unique_suffix}' for col in data_df.columns if col != 'binary_comb'}
             data_df.rename(columns=rename_columns, inplace=True)
-
-            # Merge dataframes based on 'binary_comb', condition, and histone
             key = (condition, histone)
             if key in condition_histone_dfs:
                 condition_histone_dfs[key] = pd.merge(condition_histone_dfs[key], data_df, on='binary_comb', how='outer')
@@ -181,42 +169,34 @@ def process_files(annotation_df, base_dir, input_dir, output_dir):
         except Exception as e:
             print(f"Error processing file {file_name}: {e}")
             continue
-
-    # Process each dataframe to fill NAs and calculate averages
+    
     for (condition, histone), df in condition_histone_dfs.items():
-        df.fillna(0, inplace=True)
+        interplay_columns = df.filter(regex='^interplay_').columns
+        df['avg_interplay'] = df[interplay_columns].mean(axis=1, skipna=True)
         
-        interplay_columns = df.filter(regex='interplay_').columns
-        df['avg_interplay'] = df[interplay_columns].mean(axis=1)
+        ac_interplay_columns = df.filter(regex='^abundance_corrected_interplay_').columns
+        df['avg_abundance_corrected_interplay'] = df[ac_interplay_columns].mean(axis=1, skipna=True)
         
-        ac_interplay_columns = df.filter(regex='abundance_corrected_interplay_').columns
-        df['avg_abundance_corrected_interplay'] = df[ac_interplay_columns].mean(axis=1)
-        
-        normalized_columns = df.filter(regex='normalized_interplay_').columns
-        df['avg_normalized_interplay'] = df[normalized_columns].mean(axis=1)
+        normalized_columns = df.filter(regex='^normalized_interplay_').columns
+        df['avg_normalized_interplay'] = df[normalized_columns].mean(axis=1, skipna=True)
 
-        # Parse PTMs and add as new columns
         df[['PTM_1', 'PTM_2']] = df['binary_comb'].apply(parse_ptms).apply(pd.Series)
-
-        # Select only the required columns for the final output
         final_columns = ['binary_comb', 'PTM_1', 'PTM_2', 'avg_interplay', 'avg_abundance_corrected_interplay', 'avg_normalized_interplay']
         final_df = df[final_columns]
-
-        # Save to CSV
         filename = f'{condition}_{histone}_avg_interplay_scores.csv'
         final_df.to_csv(os.path.join(output_dir, filename), index=False)
         print(f'Saved processed data to: {os.path.join(output_dir, filename)}')
 
-# Usage
 if __name__ == "__main__":
-    base_dir = os.getcwd()  # Base directory using getcwd()
-    input_dir = os.path.join(base_dir, 'output', 'interplay_scores')  # Relative path to input directory
-    output_dir = os.path.join(base_dir, 'output', 'averaged_interplay_scores')  # Relative path to output directory
+    base_dir = os.getcwd()
+    input_dir = os.path.join(base_dir, 'output', 'interplay_scores')
+    output_dir = os.path.join(base_dir, 'output', 'averaged_interplay_scores')
     annotation_path = os.path.join(base_dir, 'data', 'experimental_annotations', '02_interplay_averaging_experimental_annotation.csv')
     annotation_df = pd.read_csv(annotation_path)
     process_files(annotation_df, base_dir, input_dir, output_dir)
 
 print("Interplay scores averaging completed.")
+
 
 ```
 
