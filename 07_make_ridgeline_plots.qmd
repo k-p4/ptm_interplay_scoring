@@ -1,0 +1,68 @@
+---
+title: "07_make_ridgelines"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
+# Define the base directory and subdirectories
+basedir = os.getcwd()
+inputdir = os.path.join(basedir, 'output', 'averaged_interplay_scores')
+expt_annotation_dir = os.path.join(basedir, 'data', 'experimental_annotations')
+outputdir = os.path.join(basedir, 'figs', 'ridgelines')
+
+# Ensure the output directory exists
+os.makedirs(outputdir, exist_ok=True)
+
+# Load the annotation file
+annotation_path = os.path.join(expt_annotation_dir, '02_averaged_interplay_experimental_annotation.csv')
+annotations = pd.read_csv(annotation_path)
+
+# Function to load and merge CSV data with annotations
+def load_and_merge_data(filename, annotations):
+    data_path = os.path.join(inputdir, filename)
+    data = pd.read_csv(data_path)
+    annotation = annotations[annotations['filename'] == filename].iloc[0]
+    data['organ'] = annotation['organ']
+    data['age'] = annotation['age']  # Age is already an integer
+    data['histone'] = annotation['histone']
+    return data
+
+# Combine all data into a single DataFrame
+all_data = pd.concat([load_and_merge_data(filename, annotations) for filename in annotations['filename']])
+
+# Prepare plot data: group by organ, histone, and sort by age
+plot_data = all_data.groupby(['organ', 'histone', 'age']).agg(list).reset_index()
+
+# Sort data by age within each group
+plot_data.sort_values(by=['organ', 'histone', 'age'], inplace=True)
+
+# Plotting function for histograms
+def plot_histograms(grouped_data, organ, histone):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    colors = sns.color_palette("hsv", len(grouped_data['age'].unique()))
+    for (i, row), color in zip(grouped_data.iterrows(), colors):
+        sns.histplot(row['avg_normalized_interplay'], ax=ax, kde=True, color=color, alpha=0.175, label=f"{row['age']} years")
+    ax.legend(title='Age')
+    ax.set_title(f"Stacked Histogram of Avg Normalized  Interplay for {histone} in {organ}")
+    ax.set_xlabel('Avg Normalized Interplay')
+    ax.set_ylabel('Frequency')
+    ax.set_ylim(0, 275)
+    plt.savefig(os.path.join(outputdir, f"histogram_{organ}_{histone}.png"))
+    plt.close()
+
+# Group by organ and histone and apply the plotting function
+for (organ, histone), group in plot_data.groupby(['organ', 'histone']):
+    plot_histograms(group, organ, histone)
+
+```
+

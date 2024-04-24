@@ -8,12 +8,13 @@ execute:
   echo: false
 ---
 
-
-```{python delta I theoretical values}
+```{python}
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import os
 
+plt.rcParams['font.family'] = 'Arial'
 # Defining the range for P(PTM2|PTM1) and P(PTM2|not PTM1)
 p_ptm1 = 0.5  # Fixed probability of PTM1
 prob_range = np.linspace(0, 1, 100)  # Range of probabilities from 0 to 1
@@ -25,11 +26,12 @@ for p_ptm2_given_ptm1 in prob_range:
     for p_ptm2_given_not_ptm1 in prob_range:
         a = p_ptm2_given_ptm1 * p_ptm1
         b = p_ptm1 - a
-        c = (p_ptm2_given_not_ptm1 * (1 - p_ptm1))
+        c = p_ptm2_given_not_ptm1 * (1 - p_ptm1)
         d = 1 - p_ptm1 - c
         
-        # Delta I calculation
-        delta_i = (a / (a + b)) - (c / (c + d)) if (a+b) > 0 and (c+d) > 0 else 0
+        # Delta I calculation with stability fix using a small epsilon
+        epsilon = 1e-10
+        delta_i = (a / (a + b + epsilon)) - (c / (c + d + epsilon))
         results.append((p_ptm2_given_ptm1, p_ptm2_given_not_ptm1, delta_i))
 
 # Creating arrays for plotting
@@ -39,24 +41,32 @@ ptm2_given_ptm1, ptm2_given_not_ptm1, delta_i_values = zip(*results)
 fig = plt.figure(figsize=(10, 7))
 ax = fig.add_subplot(111, projection='3d')
 img = ax.scatter(ptm2_given_ptm1, ptm2_given_not_ptm1, delta_i_values, c=delta_i_values, cmap='viridis')
-ax.set_xlabel('p(PTM2|PTM1)')
-ax.set_ylabel('p(PTM2| ¬PTM1)')
+ax.set_xlabel('P(PTM2|PTM1)')
+ax.set_ylabel('P(PTM2| ¬PTM1)')
 ax.set_zlabel('Delta I (PTM2|PTM1)')
-fig.colorbar(img)
-plt.title('Delta I Values Across Theoretical PTM1 & PTM2 Values')
+
+# Set ticks on x and y axes
+ax.xaxis.set_major_locator(MultipleLocator(0.5))
+ax.yaxis.set_major_locator(MultipleLocator(0.5))
+
+# Add color bar
+cbar = fig.colorbar(img, orientation='horizontal', pad=0.1, shrink=0.6, ticks=[-1, -0.5, 0, 0.5, 1])
+cbar.set_label('Delta I Values')
+
+plt.title('Delta I Variation with \n PTM1 & PTM2 Probabilities')
 
 # Rotate the plot
 ax.view_init(elev=15, azim=40)
 
+# Show plot
 plt.show()
 
-
-def save_plot_with_directory(outputdir, filename, format='svg', dpi=1200):
+def save_plot_with_directory(outputdir, filename, format='svg', dpi=1200, transparent=True):
     # Create the directory if it doesn't exist
     os.makedirs(outputdir, exist_ok=True)
     # Save the plot with the provided filename
     filepath = os.path.join(outputdir, filename)
-    plt.savefig(filepath, format=format, dpi=dpi)
+    plt.savefig(filepath, format=format, dpi=dpi, transparent=transparent)
     print(f"Plot saved at: {filepath}")
 
 # Example usage
