@@ -87,10 +87,12 @@ file_pattern = os.path.join(directory, '*_interplay_scores.csv')
 
 # Step 2: Function to calculate new columns, optimized for pre-handling special cases
 def calculate_interplay_scores_optimized(df, tolerance=1e-9):
+    
     # Pre-handle special cases
+    
     # Case 1: Zero Percentage Abundance
     mask1 = (df['Percentage Abundance'] == 0) & (df['PTM1_abundance'] > 0) & (df['PTM2_abundance'] > 0)
-    df.loc[mask1, ['interplay', 'abundance_corrected_interplay', 'normalized_interplay']] = [np.nan, np.nan, -1]
+    df.loc[mask1, ['interplay', 'abundance_corrected_interplay', 'normalized_interplay']] = [-np.inf, -np.inf, -1]
     
     # Case 2: All values are 1
     mask2 = (abs(df['Percentage Abundance'] - 1) < tolerance) & \
@@ -101,9 +103,14 @@ def calculate_interplay_scores_optimized(df, tolerance=1e-9):
     # Case 3: Zero abundance for PTM1 or PTM2
     mask3 = (df['PTM1_abundance'] == 0) | (df['PTM2_abundance'] == 0)
     df.loc[mask3, ['interplay', 'abundance_corrected_interplay', 'normalized_interplay']] = np.nan
+     
+    # Case 4: Perfect positive crosstalk for ACI 
+    mask4 = (df['Percentage Abundance'] > 0) & (df['PTM1_abundance'] > 0) & (df['PTM2_abundance'] > 0) & ((df['Percentage Abundance'] ==
+    df['PTM1_abundance']) & (df['PTM1_abundance'] == df['PTM2_abundance']))
+    df.loc[mask4, 'abundance_corrected_interplay'] = np.inf
     
     # Calculate remaining valid cases
-    valid_mask = ~(mask1 | mask2 | mask3)
+    valid_mask = ~(mask1 | mask2 | mask3 | mask4)
     with np.errstate(divide='ignore', invalid='ignore'):
         df.loc[valid_mask, 'interplay'] = np.log(df.loc[valid_mask, 'Percentage Abundance'] / 
                                                  (df.loc[valid_mask, 'PTM1_abundance'] * df.loc[valid_mask, 'PTM2_abundance']))
