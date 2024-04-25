@@ -1,0 +1,181 @@
+---
+title: "08_compare_interplay_scores"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python process files and compare interplay scores}
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import linregress
+
+# Define directories
+basedir = os.getcwd()
+inputdir = os.path.join(basedir, 'output', 'averaged_interplay_scores')
+outputdir = os.path.join(basedir, 'figs', 'interplay_scores_scatterplots')
+
+if not os.path.exists(outputdir):
+    os.makedirs(outputdir)
+
+# Function to load and clean data
+def load_and_clean_data(filepath):
+    df = pd.read_csv(filepath)
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    df.dropna(subset=['avg_interplay', 'avg_abundance_corrected_interplay', 'avg_normalized_interplay'], inplace=True)
+    return df
+
+# Load all CSV files that end with "_avg_interplay_scores.csv"
+all_files = [os.path.join(inputdir, f) for f in os.listdir(inputdir) if f.endswith('_avg_interplay_scores.csv')]
+all_data = pd.concat([load_and_clean_data(f) for f in all_files])
+
+# Function to plot and save scatter plots
+def plot_and_save(x, y, xlabel, ylabel, filename):
+    plt.figure(figsize=(2.3, 2))  # Keeping your specified figure size
+    regplot = sns.regplot(x=x, y=y, data=all_data, ci=95, scatter_kws={'alpha':0.1, 'color': 'blue', 's': 2.5},
+                line_kws={'color': 'black', 'label': ' '},
+                color='grey')  # Set the main color for the confidence interval
+    plt.xlabel(xlabel, fontsize=7, labelpad=1)  # Set font size for x-axis label and adjust label padding
+    plt.ylabel(ylabel, fontsize=7, labelpad=1)  # Set font size for y-axis label and adjust label padding
+    plt.xticks(fontsize=6)  # Set font size for x-axis tick marks
+    plt.yticks(fontsize=6)  # Set font size for y-axis tick marks
+    plt.ylim(-1, 1) if 'Normalized' in ylabel else None
+    plt.tight_layout()  # Adjust layout to make room for plot elements
+
+    # Calculate Pearson correlation and R-squared
+    slope, intercept, r_value, p_value, std_err = linregress(all_data[x], all_data[y])
+    plt.text(0.05, 0.95, f'R² = {r_value**2:.2f}', transform=plt.gca().transAxes, verticalalignment='top', horizontalalignment='left', fontsize=10)
+    
+    plt.savefig(os.path.join(outputdir, filename), format='svg', transparent=True, bbox_inches='tight')  # Use bbox_inches='tight' to include all elements
+    plt.close()
+
+# Plotting
+plot_and_save('avg_interplay', 'avg_abundance_corrected_interplay', 'Interplay', 'Abundance Corrected Interplay', 'Interplay_vs_AbundanceCorrected.svg')
+plot_and_save('avg_interplay', 'avg_normalized_interplay', 'Interplay', 'Normalized Interplay', 'Interplay_vs_Normalized.svg')
+plot_and_save('avg_abundance_corrected_interplay', 'avg_normalized_interplay', 'Abundance Corrected Interplay', 'Normalized Interplay', 'AbundanceCorrected_vs_Normalized.svg')
+
+print("Plots saved in the output directory.")
+```
+
+```{python compare data completeness between interplay scores}
+import os
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def parse_ptms(proteoform):
+    ptms = re.findall(r'([A-Z]\d*[^A-Z]*)', proteoform)
+    return ptms[:2]
+
+def process_files(annotation_df, base_dir, input_dir, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    condition_histone_dfs = {}
+    completeness_data = []
+    
+    for index, row in annotation_df.iterrows():
+        file_name = row['filename']
+        file_path = os.path.join(input_dir, file_name)
+        condition = row['condition']
+        sample_name = row['sample_name']
+        biorep = row['biorep']
+        histone = row['histone']
+        unique_suffix = f"{sample_name}_rep{biorep}_{histone}"
+
+        try:
+            data_df = pd.read_csv(file_path)
+            data_df.rename(columns={'PTM Combination': 'binary_comb'}, inplace=True)
+            rename_columns = {col: f'{col}_{unique_suffix}' for col in data_df.columns if col != 'binary_comb'}
+            data_df.rename(columns=rename_columns, inplace=True)
+            
+            key = (condition, histone)
+            if key in condition_histone_dfs:
+                condition_histone_dfs[key] = pd.merge(condition_histone_dfs[key], data_df, on='binary_comb', how='outer')
+            else:
+                condition_histone_dfs[key] = data_df
+
+        except FileNotFoundError:
+            print(f"File not found: {file_path}")
+        except Exception as e:
+            print(f"Error processing file {file_name}: {e}")
+    
+    # Calculate completeness for each condition-histone combination
+    for (condition, histone), df in condition_histone_dfs.items():
+        # Collect all score columns by regex pattern and compute completeness
+        for score_type in ['interplay', 'abundance_corrected_interplay', 'normalized_interplay']:
+            score_columns = df.filter(regex=f'^{score_type}_').columns
+            total_values = df[score_columns].size
+            valid_values = df[score_columns].replace([np.inf, -np.inf], np.nan).notna().sum().sum()
+            completeness = valid_values / total_values * 100 if total_values else 0
+
+            completeness_data.append({
+                'Condition': condition,
+                'Histone': histone,
+                'Type': score_type.replace('_', ' ').title(),
+                'Completeness': completeness
+            })
+
+    return pd.DataFrame(completeness_data)
+
+def plot_completeness(completeness_df, output_dir):
+    sns.set(style="whitegrid")
+    sns.set_context("paper", font_scale=0.7)
+    
+    # Create a combined key for condition and histone
+    completeness_df['Condition_Histone'] = completeness_df['Condition'] + ' ' + completeness_df['Histone']
+    
+    plt.figure(figsize=(7, 3))
+    barplot = sns.barplot(
+        x="Condition_Histone",
+        y="Completeness", 
+        hue="Type", 
+        data=completeness_df, 
+        errorbar="sd"
+    )
+    
+    plt.title('Data Completeness across Organs and Age', fontsize=12)
+    barplot.set_xticklabels(barplot.get_xticklabels(), rotation=60)
+    
+    # To remove the 'Condition_Histone' xlabel, comment out or delete the next line
+    # plt.xlabel('Condition Histone', labelpad=2)
+    
+    # Increase the font size for the ylabel
+    plt.ylabel('Data Completeness (%)', labelpad=2, fontsize=10)
+    
+    # Adjust the position of the legend
+    handles, labels = barplot.get_legend_handles_labels()
+    plt.legend(handles=handles, labels=labels, loc='lower center', bbox_to_anchor=(0.5, 1.1), ncol=3, frameon=False)
+
+    # You may adjust the padding as necessary, potentially using subplots_adjust
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85)  # Adjust this value as needed to ensure the title and legend fit
+
+    # Save the figure
+    plot_filename = os.path.join(output_dir, 'data_completeness.svg')
+    plt.savefig(plot_filename, bbox_inches='tight', format='svg')
+    plt.show()
+    print(f"Plot saved to {plot_filename}")
+
+
+
+if __name__ == "__main__":
+    base_dir = os.getcwd()
+    input_dir = os.path.join(base_dir, 'output', 'interplay_scores')
+    output_dir = os.path.join(base_dir, 'figs', 'interplay_scores_completeness')
+    annotation_path = os.path.join(base_dir, 'data', 'experimental_annotations', '02_interplay_averaging_experimental_annotation.csv')
+    annotation_df = pd.read_csv(annotation_path)
+    completeness_df = process_files(annotation_df, base_dir, input_dir, output_dir)
+    plot_completeness(completeness_df, output_dir)
+
+print("Interplay scores completeness assessment completed.")
+
+
+```
