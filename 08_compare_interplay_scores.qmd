@@ -142,7 +142,7 @@ def plot_completeness(completeness_df, output_dir):
     )
     
     plt.title('Data Completeness across Organs and Age', fontsize=12)
-    barplot.set_xticklabels(barplot.get_xticklabels(), rotation=60)
+    barplot.set_xticklabels(barplot.get_xticklabels(), rotation=90)
     
     # To remove the 'Condition_Histone' xlabel, comment out or delete the next line
     # plt.xlabel('Condition Histone', labelpad=2)
