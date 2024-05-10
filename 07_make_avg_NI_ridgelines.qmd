@@ -51,7 +51,7 @@ def plot_histograms(grouped_data, organ, histone):
     fig, ax = plt.subplots(figsize=(10, 6))
     colors = sns.color_palette("hsv", len(grouped_data['age'].unique()))
     for (i, row), color in zip(grouped_data.iterrows(), colors):
-        sns.histplot(row['avg_normalized_interplay'], ax=ax, kde=True, color=color, alpha=0.175, label=f"{row['age']} years")
+        sns.histplot(row['avg_normalized_interplay'], ax=ax, kde=True, color=color, alpha=0.175, label=f"{row['age']} months")
     ax.legend(title='Age')
     ax.set_title(f"Stacked Histogram of Avg Normalized Interplay \nfor {histone} PTMs in {organ} across ages")
     ax.set_xlabel('Avg Normalized Interplay')
