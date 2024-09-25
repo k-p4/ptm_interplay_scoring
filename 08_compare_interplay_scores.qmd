@@ -69,6 +69,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import re
 
 def parse_ptms(proteoform):
     ptms = re.findall(r'([A-Z]\d*[^A-Z]*)', proteoform)
@@ -132,20 +133,25 @@ def plot_completeness(completeness_df, output_dir):
     # Create a combined key for condition and histone
     completeness_df['Condition_Histone'] = completeness_df['Condition'] + ' ' + completeness_df['Histone']
     
+    # Define the custom color palette for the three types
+    palette = {
+        'Interplay': 'black',
+        'Abundance Corrected Interplay': 'red',
+        'Normalized Interplay': 'blue'
+    }
+    
     plt.figure(figsize=(7, 3))
     barplot = sns.barplot(
         x="Condition_Histone",
         y="Completeness", 
         hue="Type", 
         data=completeness_df, 
-        errorbar="sd"
+        errorbar="sd",
+        palette=palette  # Use the custom palette here
     )
     
     plt.title('Data Completeness across Organs and Age', fontsize=12)
     barplot.set_xticklabels(barplot.get_xticklabels(), rotation=90)
-    
-    # To remove the 'Condition_Histone' xlabel, comment out or delete the next line
-    # plt.xlabel('Condition Histone', labelpad=2)
     
     # Increase the font size for the ylabel
     plt.ylabel('Data Completeness (%)', labelpad=2, fontsize=10)
@@ -154,7 +160,7 @@ def plot_completeness(completeness_df, output_dir):
     handles, labels = barplot.get_legend_handles_labels()
     plt.legend(handles=handles, labels=labels, loc='lower center', bbox_to_anchor=(0.5, 1.1), ncol=3, frameon=False)
 
-    # You may adjust the padding as necessary, potentially using subplots_adjust
+    # Adjust layout to ensure everything fits
     plt.tight_layout()
     plt.subplots_adjust(top=0.85)  # Adjust this value as needed to ensure the title and legend fit
 
@@ -177,5 +183,68 @@ if __name__ == "__main__":
 
 print("Interplay scores completeness assessment completed.")
 
+```
+
+```{python plot alternative interplay scores}
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import linregress
+
+# Define directories
+basedir = os.getcwd()
+inputdir = os.path.join(basedir, 'output', 'averaged_interplay_scores')
+outputdir = os.path.join(basedir, 'figs', 'interplay_scores_scatterplots')
+
+if not os.path.exists(outputdir):
+    os.makedirs(outputdir)
+
+# Function to load and clean data
+def load_and_clean_data(filepath):
+    df = pd.read_csv(filepath)
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    df.dropna(subset=['avg_interplay', 'avg_abundance_corrected_interplay', 'avg_normalized_interplay'], inplace=True)
+    return df
+
+# Load all CSV files that end with "_avg_interplay_scores.csv"
+all_files = [os.path.join(inputdir, f) for f in os.listdir(inputdir) if f.endswith('_avg_interplay_scores.csv')]
+all_data = pd.concat([load_and_clean_data(f) for f in all_files])
+
+# Function to plot and save enhanced scatter plots with confidence intervals and density contours
+def plot_and_save(x, y, xlabel, ylabel, filename):
+    # Create the jointplot with regression line, kde marginals, and density contours
+    joint_plot = sns.jointplot(x=x, y=y, data=all_data, kind="reg", height=5, 
+                               scatter_kws={'alpha':0.25, 's': 20, 'color':'blue'}, 
+                               line_kws={'color': 'black'},  # Regression line with confidence interval shading
+                               marginal_kws={'fill': True},  # Replacing 'shade=True' with 'fill=True'
+                               joint_kws={'scatter_kws': {'alpha': 0.3}, 'line_kws': {'color': 'red'}})
+    
+    # Add density contours to the scatter plot
+    sns.kdeplot(x=all_data[x], y=all_data[y], ax=joint_plot.ax_joint, levels=5, color="green", linewidths=0.5)
+    
+    # Calculate regression and add R² and equation
+    slope, intercept, r_value, p_value, std_err = linregress(all_data[x], all_data[y])
+    joint_plot.ax_joint.text(0.05, 0.95, f'R = {r_value:.2f}\nR² = {r_value**2:.2f}', 
+                             transform=joint_plot.ax_joint.transAxes, 
+                             fontsize=10, verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
+    joint_plot.ax_joint.text(0.05, 0.85, f'y = {slope:.2f}x + {intercept:.2f}', 
+                             transform=joint_plot.ax_joint.transAxes, 
+                             fontsize=10, verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
+    
+    # Set labels and save the plot
+    joint_plot.set_axis_labels(xlabel, ylabel, fontsize=12)
+    plot_filename = os.path.join(outputdir, filename)
+    plt.savefig(plot_filename, format='svg', transparent=True)
+    plt.close()
+    print(f"Plot saved to {plot_filename}")
+
+# Plotting with enhanced features
+plot_and_save('avg_interplay', 'avg_abundance_corrected_interplay', 'Interplay', 'Abundance Corrected Interplay', 'Interplay_vs_AbundanceCorrected.svg')
+plot_and_save('avg_interplay', 'avg_normalized_interplay', 'Interplay', 'Normalized Interplay', 'Interplay_vs_Normalized.svg')
+plot_and_save('avg_abundance_corrected_interplay', 'avg_normalized_interplay', 'Abundance Corrected Interplay', 'Normalized Interplay', 'AbundanceCorrected_vs_Normalized.svg')
+
+print("Enhanced plots saved in the output directory.")
 
 ```

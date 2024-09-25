@@ -1,0 +1,239 @@
+---
+title: "10_graph_score_functions"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python plot all three score functions}
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Set Seaborn style to 'white'
+sns.set_style("white")
+
+# Define a range of p_ij values from close to 0 to 0.5
+p_ij_values_limited = np.linspace(1e-7, 0.5, 2000)
+
+# Define some example values for p_i and p_j (assuming they are the same for simplicity in this case)
+p_i = 0.5
+p_j = 0.5
+
+# Interplay I calculations
+interplay_I_limited = np.log(p_ij_values_limited / (p_i * p_j))
+
+# Calculate Abundance Corrected Interplay (ACI)
+# Avoid division by zero issues, we handle the parts separately
+abundance_corrected_interplay_limited = np.log((p_ij_values_limited / (p_i * p_j)) * 
+                                               ((1 - p_i) * (1 - p_j) * p_ij_values_limited) / 
+                                               ((p_i - p_ij_values_limited) * (p_j - p_ij_values_limited)))
+
+# Calculate Normalized Interplay (NI) again with limited range
+normalized_interplay_limited = interplay_I_limited / (-np.log(p_ij_values_limited))
+
+# Set up the plot with the minimal theme and thicker lines
+plt.figure(figsize=(2.6, 3))
+
+# Plot Interplay for limited range with thicker lines
+plt.plot(p_ij_values_limited, interplay_I_limited, label='Interplay (I)', color='black', linewidth=1.5)
+
+# Plot Abundance Corrected Interplay for limited range with thicker lines
+plt.plot(p_ij_values_limited, abundance_corrected_interplay_limited, label='Abundance Corrected Interplay (ACI)', color='red', linewidth=1.5)
+
+# Plot Normalized Interplay for limited range with thicker lines and make it stand out
+plt.plot(p_ij_values_limited, normalized_interplay_limited, label='Normalized Interplay (NI)', color='blue', linewidth=2, linestyle='-', alpha=0.8)
+
+# Add lines indicating limits with a slightly thicker line
+plt.axhline(0, color='gray', linestyle='--', linewidth=1.5)
+plt.axhline(1, color='gray', linestyle='--', label='NI Limit = [-1,1]', linewidth=1.5)
+plt.axhline(-1, color='gray', linestyle='--', linewidth=1.5)
+
+#plot at vertical line at x 0.25
+plt.axvline(0.25, color='gray', linestyle='--', linewidth=1
+
+# Add title and labels with minimal theme styling
+plt.title(' ', fontsize=14)
+plt.xlabel('Co-occurence of two PTMs = 0.5', fontsize=12)
+plt.ylabel('Interplay Scores', fontsize=12)
+plt.ylim([-25, 15])  # Set limits for y-axis to -7.5 to 7.5 for better visualization
+plt.legend(frameon=False)
+plt.grid(True, linestyle='--', linewidth=0.5)
+plt.show()
+
+
+
+def save_plot_with_directory(outputdir, filename, format='svg', dpi=1200, transparent=True):
+    # Create the directory if it doesn't exist
+    os.makedirs(outputdir, exist_ok=True)
+    # Save the plot with the provided filename
+    filepath = os.path.join(outputdir, filename)
+    plt.savefig(filepath, format=format, dpi=dpi, transparent=transparent)
+    print(f"Plot saved at: {filepath}")
+
+# Example usage
+outputdir = './figs/IvCAIvNI/'
+filename = 'scores_comparison_theoretical.svg'
+save_plot_with_directory(outputdir, filename)
+
+```
+
+```{python make side by side charts}
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Set Seaborn style to 'white'
+sns.set_style("white")
+
+# Define a range of p_ij values from close to 0 to 0.5
+p_ij_values_limited = np.linspace(1e-7, 0.5, 2000)
+
+# Define some example values for p_i and p_j (assuming they are the same for simplicity in this case)
+p_i = 0.5
+p_j = 0.5
+
+# Interplay I calculations
+interplay_I_limited = np.log(p_ij_values_limited / (p_i * p_j))
+
+# Calculate Abundance Corrected Interplay (ACI)
+abundance_corrected_interplay_limited = np.log((p_ij_values_limited / (p_i * p_j)) * 
+                                               ((1 - p_i) * (1 - p_j) * p_ij_values_limited) / 
+                                               ((p_i - p_ij_values_limited) * (p_j - p_ij_values_limited)))
+
+# Calculate Normalized Interplay (NI)
+normalized_interplay_limited = interplay_I_limited / (-np.log(p_ij_values_limited))
+
+# Set up the plot with two subplots side by side
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+
+# Plot Interplay for limited range with thicker lines on the first subplot
+ax1.plot(p_ij_values_limited, interplay_I_limited, label='Interplay (I)', color='black', linewidth=2)
+ax1.plot(p_ij_values_limited, abundance_corrected_interplay_limited, label='Abundance Corrected Interplay (ACI)', color='red', linewidth=2)
+ax1.axhline(0, color='gray', linestyle='--', linewidth=1.5)
+ax1.axvline(0.25, color='gray', linestyle='--', linewidth=1.5)  # Vertical line at x = 0.25
+ax1.set_xlabel('$p_{ij}$', fontsize=12)
+ax1.set_ylabel('Interplay Scores (I and ACI)', fontsize=12)
+ax1.legend(loc='upper left', frameon=False)
+ax1.grid(True, linestyle='--', linewidth=0.5)
+ax1.set_title('Interplay and Abundance Corrected Interplay', fontsize=14)
+
+# Plot Normalized Interplay on the second subplot
+ax2.plot(p_ij_values_limited, normalized_interplay_limited, label='Normalized Interplay (NI)', color='blue', linewidth=3, linestyle='-', alpha=0.8)
+ax2.axhline(0, color='gray', linestyle='--', linewidth=1.5)  # Horizontal line at zero
+ax2.axvline(0.25, color='gray', linestyle='--', linewidth=1.5)  # Vertical line at x = 0.25
+ax2.set_xlabel('$p_{ij}$', fontsize=12)
+ax2.set_ylabel('Normalized Interplay (NI)', fontsize=12)
+
+# Manually align the zeros by adjusting the limits of ax1
+# Get the current ylim for ax1
+ax1_lim_bottom, ax1_lim_top = ax1.get_ylim()
+
+# Center the zero for ax1 and adjust the range to align with ax2
+max_abs_value = max(abs(ax1_lim_bottom), abs(ax1_lim_top))
+ax1.set_ylim([-max_abs_value, max_abs_value])
+
+# Set ax2 limits directly to -1 and 1
+ax2.set_ylim([-1, 1])
+
+# Add a main title for both subplots
+plt.suptitle('Behavior of Interplay Scores as $p_{ij}$ Varies (0 to 0.5)', fontsize=16)
+
+# Show the plot
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+plt.show()
+
+
+def save_plot_with_directory(outputdir, filename, format='svg', dpi=1200, transparent=True):
+    # Create the directory if it doesn't exist
+    os.makedirs(outputdir, exist_ok=True)
+    # Save the plot with the provided filename
+    filepath = os.path.join(outputdir, filename)
+    plt.savefig(filepath, format=format, dpi=dpi, transparent=transparent)
+    print(f"Plot saved at: {filepath}")
+
+# Example usage
+outputdir = './figs/IvCAIvNI/'
+filename = 'score_func_sep.svg'
+save_plot_with_directory(outputdir, filename)
+
+```
+
+```{python only plot normalized interplay}
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Set Seaborn style to 'white'
+sns.set_style("white")
+
+# Define a range of p_ij values from close to 0 to 0.5
+p_ij_values_limited = np.linspace(1e-7, 0.5, 2000)
+
+# Define some example values for p_i and p_j (assuming they are the same for simplicity in this case)
+p_i = 0.5
+p_j = 0.5
+
+# Interplay I calculations
+interplay_I_limited = np.log(p_ij_values_limited / (p_i * p_j))
+
+# Calculate Abundance Corrected Interplay (ACI)
+# Avoid division by zero issues, we handle the parts separately
+abundance_corrected_interplay_limited = np.log((p_ij_values_limited / (p_i * p_j)) * 
+                                               ((1 - p_i) * (1 - p_j) * p_ij_values_limited) / 
+                                               ((p_i - p_ij_values_limited) * (p_j - p_ij_values_limited)))
+
+# Calculate Normalized Interplay (NI) again with limited range
+normalized_interplay_limited = interplay_I_limited / (-np.log(p_ij_values_limited))
+
+# Set up the plot with the minimal theme and thicker lines
+plt.figure(figsize=(2.6, 3))
+
+# Plot Interplay for limited range with thicker lines
+#plt.plot(p_ij_values_limited, interplay_I_limited, label='Interplay (I)', color='black', linewidth=1.5)
+
+# Plot Abundance Corrected Interplay for limited range with thicker lines
+#plt.plot(p_ij_values_limited, abundance_corrected_interplay_limited, label='Abundance Corrected Interplay (ACI)', color='red', linewidth=1.5)
+
+# Plot Normalized Interplay for limited range with thicker lines and make it stand out
+plt.plot(p_ij_values_limited, normalized_interplay_limited, label='Normalized Interplay (NI)', color='blue', linewidth=2, linestyle='-', alpha=0.8)
+
+#plot at vertical line at x 0.25
+plt.axvline(0.25, color='gray', linestyle='--', linewidth=1)  # Vertical line at x = 0.25
+
+
+# Add lines indicating limits with a slightly thicker line
+plt.axhline(0, color='gray', linestyle='--', linewidth=1.5)
+#plt.axhline(1, color='gray', linestyle='--', label='NI Limit = ±1', linewidth=1.5)
+#plt.axhline(-1, color='gray', linestyle='--', linewidth=1.5)
+
+# Add title and labels with minimal theme styling
+plt.title(' ', fontsize=14)
+plt.xlabel('Co-occurence of two PTMs = 0.5', fontsize=12)
+plt.ylabel('Interplay Scores', fontsize=12)
+plt.ylim([-1, 1])  # Set limits for y-axis to -7.5 to 7.5 for better visualization
+plt.legend(frameon=False)
+plt.grid(True, linestyle='--', linewidth=0.5)
+plt.show()
+
+
+
+def save_plot_with_directory(outputdir, filename, format='svg', dpi=1200, transparent=True):
+    # Create the directory if it doesn't exist
+    os.makedirs(outputdir, exist_ok=True)
+    # Save the plot with the provided filename
+    filepath = os.path.join(outputdir, filename)
+    plt.savefig(filepath, format=format, dpi=dpi, transparent=transparent)
+    print(f"Plot saved at: {filepath}")
+
+# Example usage
+outputdir = './figs/IvCAIvNI/'
+filename = 'normalizedinterplay_theoretical.svg'
+save_plot_with_directory(outputdir, filename)
+
+```
