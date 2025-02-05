@@ -75,3 +75,83 @@ filename = 'delta_I_simul.svg'
 save_plot_with_directory(outputdir, filename)
 
 ```
+
+```{python plot 2D graphs}
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+# Set font
+plt.rcParams['font.family'] = 'Arial'
+
+# Define probability range
+p_ptm1 = 0.5  # Fixed probability of PTM1
+prob_range = np.linspace(0, 1, 100)  # Range of probabilities from 0 to 1
+
+# Compute Delta I values
+delta_i_given_ptm1 = []
+delta_i_given_not_ptm1 = []
+
+for p in prob_range:
+    # Delta I when varying P(PTM2 | PTM1)
+    a = p * p_ptm1
+    b = p_ptm1 - a
+    c = (1 - p) * (1 - p_ptm1)
+    d = 1 - p_ptm1 - c
+
+    epsilon = 1e-10  # Stability fix
+    delta_i_ptm1 = (a / (a + b + epsilon)) - (c / (c + d + epsilon))
+    delta_i_given_ptm1.append(delta_i_ptm1)
+
+    # Delta I when varying P(PTM2 | ¬PTM1)
+    a = (1 - p) * p_ptm1
+    b = p_ptm1 - a
+    c = p * (1 - p_ptm1)
+    d = 1 - p_ptm1 - c
+
+    delta_i_not_ptm1 = (a / (a + b + epsilon)) - (c / (c + d + epsilon))
+    delta_i_given_not_ptm1.append(delta_i_not_ptm1)
+
+# Function to save each plot separately
+def save_individual_plot(outputdir, filename, fig):
+    os.makedirs(outputdir, exist_ok=True)
+    filepath = os.path.join(outputdir, filename)
+    fig.savefig(filepath, format='svg', dpi=1200, transparent=True, bbox_inches='tight')
+    print(f"Plot saved at: {filepath}")
+
+# Create first plot: Delta I vs P(PTM2|PTM1)
+fig1, ax1 = plt.subplots(figsize=(3.3, 2))
+ax1.plot(prob_range, delta_i_given_ptm1, color='blue', linewidth=2)
+ax1.set_xlabel(r'$P(PTM2 | PTM1)$', fontsize=9)
+ax1.set_ylabel(r'$\Delta I$(PTM2|PTM1)', fontsize=9)
+ax1.set_title("Effect of PTM1 Presence\non PTM2 Directional Interplay", fontsize=9)
+ax1.axhline(1, color='gray', linestyle='dashed', linewidth=1)
+ax1.axhline(0, color='black', linestyle='dashed', linewidth=1)
+ax1.axhline(-1, color='gray', linestyle='dashed', linewidth=1)
+plt.tight_layout()
+
+# Save first plot
+outputdir = './figs/delta_I_theoretical/'
+filename1 = 'delta_I_vs_PTM2_given_PTM1.svg'
+save_individual_plot(outputdir, filename1, fig1)
+
+# Create second plot: Delta I vs P(PTM2|¬PTM1)
+fig2, ax2 = plt.subplots(figsize=(3.3, 2))
+ax2.plot(prob_range, delta_i_given_not_ptm1, color='red', linewidth=2)
+ax2.set_xlabel(r'$P(PTM2 | \neg PTM1)$', fontsize=9)
+ax2.set_ylabel(r'$\Delta I$(PTM2|PTM1)', fontsize=9)
+ax2.set_title("Effect of PTM1 Absence\non PTM2 Directional Interplay", fontsize=9)
+ax2.axhline(1, color='gray', linestyle='dashed', linewidth=1)
+ax2.axhline(0, color='black', linestyle='dashed', linewidth=1)
+ax2.axhline(-1, color='gray', linestyle='dashed', linewidth=1)
+plt.tight_layout()
+
+# Save second plot
+filename2 = 'delta_I_vs_PTM2_given_not_PTM1.svg'
+save_individual_plot(outputdir, filename2, fig2)
+
+# Show the plots
+plt.show()
+
+
+```

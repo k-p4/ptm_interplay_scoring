@@ -1,0 +1,168 @@
+---
+title: "11_Fig_3_reworked"
+date: 02/13/2024
+date-format: YYYY-MM-DD
+author: Karl F Poncha
+output: html
+execute:
+  echo: false
+---
+
+```{python}
+import os
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Update matplotlib font parameters for a consistent 9-point font size
+plt.rcParams.update({
+    'font.size': 9,
+    'axes.titlesize': 9,
+    'axes.labelsize': 9,
+    'xtick.labelsize': 9,
+    'ytick.labelsize': 9
+})
+
+# Use a minimal theme
+sns.set_theme(style="white")
+
+# Define directories
+basedir = os.getcwd()
+inputdir = os.path.join(basedir, 'output', 'averaged_interplay_scores')
+outputdir = os.path.join(basedir, 'figs', 'Fig_3_reworked')
+
+if not os.path.exists(outputdir):
+    os.makedirs(outputdir)
+
+# List of allowed binary PTM combinations
+allowed_binary_combs = [
+    "K9me1K27me1",
+    "K9me1K27me2",
+    "K9me2K27me2",
+    "K9acK36me2",
+    "K14acK27me2",
+    "K14acK36me2",
+    "K27me2K36me2"
+]
+
+# Define organs and ages (ages in ascending order)
+organs = ['brain', 'heart', 'kidney', 'liver']
+ages = [3, 5, 10, 18, 24]
+
+# Histone variants
+histone_variants = ['H3.2', 'H3.3']
+
+# Create a MultiIndex for the columns (Organ, Age)
+columns = pd.MultiIndex.from_product([organs, ages], names=["Organ", "Age"])
+
+# Process each histone variant
+for variant in histone_variants:
+    # Initialize DataFrame with rows as allowed binary combinations and columns as (Organ, Age)
+    heatmap_data = pd.DataFrame(np.nan, index=allowed_binary_combs, columns=columns)
+
+    # Populate the DataFrame by iterating through each organ and age
+    for organ in organs:
+        for age in ages:
+            filename = f"{organ}_{age}mo_{variant}_avg_interplay_scores.csv"
+            filepath = os.path.join(inputdir, filename)
+            if not os.path.exists(filepath):
+                print(f"Warning: File '{filepath}' not found.")
+                continue
+
+            try:
+                df = pd.read_csv(filepath)
+                df = df.replace("#NAME?", np.nan)
+                df_filtered = df[df['binary_comb'].isin(allowed_binary_combs)]
+                df_filtered['avg_normalized_interplay'] = pd.to_numeric(
+                    df_filtered['avg_normalized_interplay'], errors='coerce'
+                )
+                for binary in allowed_binary_combs:
+                    row = df_filtered[df_filtered['binary_comb'] == binary]
+                    if not row.empty:
+                        value = row['avg_normalized_interplay'].mean()
+                        heatmap_data.loc[binary, (organ, age)] = value
+                    else:
+                        heatmap_data.loc[binary, (organ, age)] = np.nan
+
+            except Exception as e:
+                print(f"Error processing file '{filepath}': {e}")
+                continue
+
+    # Create new column labels as a single line, e.g., "brain 3mo"
+    col_labels = [f"{organ} {age}mo" for (organ, age) in heatmap_data.columns]
+
+    # Create the figure and heatmap with the specified size (6.8" x 3.5")
+    fig, ax = plt.subplots(figsize=(7, 2.45))
+    hm = sns.heatmap(
+        heatmap_data,
+        annot=False,         # Remove numbers inside the boxes
+        cmap="YlGnBu",
+        cbar=False,          # Remove the color scale
+        xticklabels=col_labels,
+        yticklabels=heatmap_data.index,
+        linewidths=0.5,
+        linecolor='gray'
+    )
+    
+    # Remove chart title and axes labels for a minimal look
+    ax.set_title("")
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    
+    # Rotate and adjust the x-axis labels
+    ax.set_xticklabels(col_labels, rotation=90, ha="right", fontsize=9)
+    
+    # Remove top and right spines for a clean look
+    sns.despine(ax=ax, left=True, bottom=True)
+    
+    # Use tight layout to maximize space
+    plt.tight_layout()
+    
+    # Save and display the figure
+    output_filename = os.path.join(outputdir, f"{variant}_heatmap.png")
+    plt.savefig(output_filename, dpi=300)
+    plt.show()
+    print(f"Heat map for {variant} saved as '{output_filename}'")
+
+```
+
+```{python}
+import os
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+# (Assuming outputdir has been defined already in your script)
+# For example:
+# basedir = os.getcwd()
+# outputdir = os.path.join(basedir, 'figs', 'Fig_3_reworked')
+
+# Create a figure with the specified dimensions for the scale bar
+fig_scale, ax_scale = plt.subplots(figsize=(4.5, 0.4))
+
+# Define the color palette and normalization (range from -1 to 1)
+cmap = plt.get_cmap("YlGnBu")
+norm = mpl.colors.Normalize(vmin=-1, vmax=1)
+
+# Create a dummy ScalarMappable (required by colorbar) and set its array to empty
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])
+
+# Create a horizontal colorbar with ticks at -1, 0, and 1
+cbar = fig_scale.colorbar(sm, cax=ax_scale, orientation="horizontal", ticks=[-1, 0, 1])
+cbar.ax.tick_params(labelsize=5)  # Set tick label font size
+
+# Optional: If you want to label the scale, uncomment the next line
+# cbar.set_label("Avg Normalized Interplay", fontsize=9)
+
+# Use tight layout to ensure everything fits well
+plt.tight_layout()
+
+# Save the scale bar image in the output directory
+scalebar_filename = os.path.join(outputdir, "scale_bar.png")
+plt.savefig(scalebar_filename, dpi=300)
+plt.show()
+
+print(f"Scale bar saved as '{scalebar_filename}'")
+
+```
