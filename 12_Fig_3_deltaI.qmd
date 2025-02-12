@@ -1,0 +1,66 @@
+---
+title: "12_Fig_3_deltaI"
+format: html
+---
+
+```{python}
+import os
+import re
+import pandas as pd
+from glob import glob
+
+# Define directories
+basedir = os.getcwd()
+inputdir = os.path.join(basedir, 'output', 'averaged_delta_I_nodes')
+outputdir = os.path.join(basedir, 'figs', 'Fig_3_reworked')
+
+# Create the output directory if it doesn't exist
+if not os.path.exists(outputdir):
+    os.makedirs(outputdir)
+
+# Define file pattern for CSV files (e.g., brain_10mo_H3.2_avg_interplay_scores.csv)
+file_pattern = os.path.join(inputdir, "*_avg_interplay_scores.csv")
+csv_files = glob(file_pattern)
+
+# List to store DataFrames from each CSV file
+all_data = []
+
+# Process each file
+for fpath in csv_files:
+    filename = os.path.basename(fpath)
+    
+    # Use regex to extract organ, age, and histone variant from the filename
+    match = re.match(r"([a-zA-Z]+)_(\d+)mo_(H3\.\d)_avg_interplay_scores\.csv", filename)
+    if not match:
+        print(f"Skipping file (pattern mismatch): {filename}")
+        continue
+    
+    organ, age_str, histone_variant = match.groups()
+    age = int(age_str)  # Convert age string to integer
+    
+    # Read CSV file into a DataFrame
+    df = pd.read_csv(fpath)
+    
+    # Add metadata columns
+    df["organ"] = organ
+    df["age"] = age
+    df["histone_variant"] = histone_variant
+    
+    # Append to the list
+    all_data.append(df)
+
+# Combine all the DataFrames into one master DataFrame
+if all_data:
+    combined_df = pd.concat(all_data, ignore_index=True)
+else:
+    raise ValueError("No files found or no files matched the expected naming convention.")
+
+# Optional: Save the combined DataFrame to the output directory
+combined_csv_path = os.path.join(outputdir, "combined_interplay_scores.csv")
+combined_df.to_csv(combined_csv_path, index=False)
+
+# Print summary information
+print("Combined dataframe shape:", combined_df.shape)
+print("Combined data saved to:", combined_csv_path)
+
+```

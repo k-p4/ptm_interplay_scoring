@@ -1,0 +1,679 @@
+---
+title: "13_DAGs"
+format: html
+---
+
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Brain_H3.3_5mo_K18acK27ac_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K27ac", "K18ac", -0.1124),
+    ("K18ac", "K27ac", -0.1375),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K27ac": (0.45, 0),
+    "K18ac": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+```
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Brain_H3.3_24mo_K18acK27ac_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K27ac", "K18ac", 0.02),
+    ("K18ac", "K27ac", 0.0006),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K27ac": (0.45, 0),
+    "K18ac": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+```
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Liver_H3.3_3mo_K18acK36me2_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K18ac", "K36me2", 0.05),
+    ("K36me2", "K18ac", 0.09),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K18ac": (0.45, 0),
+    "K36me2": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+
+```
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Liver_H3.3_24mo_K18acK36me2_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K18ac", "K36me2", 0.18),
+    ("K36me2", "K18ac", 0.36),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K18ac": (0.45, 0),
+    "K36me2": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+
+```
+
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Liver_H3.3_24mo_K9acK27me1_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K9ac", "K27me1", -0.16),
+    ("K27me1", "K9ac", -0.02),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K9ac": (0.45, 0),
+    "K27me1": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+
+```
+
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Heart_H3.3_3mo_K9me1K27me3_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K9me1", "K27me3", -0.23),
+    ("K27me3", "K9me1", -0.15),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K9me1": (0.45, 0),
+    "K27me3": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+```
+
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Heart_H3.3_18mo_K9me1K27me3_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K9me1", "K27me3", -0.25),
+    ("K27me3", "K9me1", -0.07),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K9me1": (0.45, 0),
+    "K27me3": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+
+```
+
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Liver_H3.3_3mo_K9acK27me1_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K9ac", "K27me1", -0.04),
+    ("K27me1", "K9ac", -0.01),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K9ac": (0.45, 0),
+    "K27me1": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+```
+```{python}
+# Import necessary libraries
+import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Define the output directory relative to the current working directory
+output_dir = os.path.join(os.getcwd(), "figs", "Fig_3_reworked")
+os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+# Define the output file path
+output_file = os.path.join(output_dir, "Liver_H3.3_24mo_K9acK27me1_dag.svg")
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Define edges with weights and colors
+edges = [
+    ("K9ac", "K27me1", -0.16),
+    ("K27me1", "K9ac", -0.02),
+]
+
+# Define minimum edge thickness
+min_thickness = 0.75
+
+# Add edges to the graph with attributes
+for source, target, value in edges:
+    color = 'blue' if value > 0 else 'red'
+    weight = max(abs(value) * 10, min_thickness)  # Scale weight while maintaining minimum thickness
+    G.add_edge(source, target, weight=weight, color=color)
+
+# Extract edge attributes
+edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+edge_weights = [G[u][v]['weight'] for u, v in G.edges()]
+
+# Adjust figure size slightly for better fit
+fig, ax = plt.subplots(figsize=(3.25, 1.5))  # Slightly increase figure size
+
+# Define node positions to bring nodes closer together
+pos = {
+    "K9ac": (0.45, 0),
+    "K27me1": (0.5, 0)  # Reduce spacing to bring nodes closer
+}
+
+# Adjust node size for better text visibility
+node_size = 1700  
+
+# Increase transparency of nodes and edges
+node_alpha = 0.85  # Node transparency
+edge_alpha = 0.35  # Edge transparency
+
+# Draw the graph with transparency settings
+nx.draw(G, pos, with_labels=True, edge_color=edge_colors, width=edge_weights, 
+        node_size=node_size, arrows=True, font_size=10, connectionstyle="arc3,rad=0.1",
+        node_color="lightblue", alpha=node_alpha, bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.3"))
+
+# Draw edges separately with increased transparency
+for (u, v, d) in G.edges(data=True):
+    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=[d['color']], 
+                           width=d['weight'], alpha=edge_alpha, connectionstyle="arc3,rad=0.1")
+
+# Apply tight layout
+plt.axis("off")
+plt.tight_layout(pad=0.01)  # Adjust padding for better fitting
+
+# Save the figure
+plt.savefig(output_file, dpi=1200, bbox_inches='tight', transparent=True)  # Ensure high-quality saving
+
+# Show the figure
+plt.show()
+
+print(f"Figure saved to: {output_file}")
+
+```

@@ -58,7 +58,7 @@ plt.axvline(0.25, color='gray', linestyle='--', linewidth=1
 
 # Add title and labels with minimal theme styling
 plt.title(' ', fontsize=14)
-plt.xlabel('Co-occurence of two PTMs = 0.5', fontsize=12)
+plt.xlabel(r'Joint Probability of PTM1 and PTM2 Co-occurrence, $P(\text{PTM1,PTM2})$', fontsize=12)
 plt.ylabel('Interplay Scores', fontsize=12)
 plt.ylim([-25, 15])  # Set limits for y-axis to -7.5 to 7.5 for better visualization
 plt.legend(frameon=False)
@@ -214,8 +214,8 @@ plt.axhline(0, color='gray', linestyle='--', linewidth=1.5)
 
 # Add title and labels with minimal theme styling
 plt.title(' ', fontsize=14)
-plt.xlabel('Co-occurence of two PTMs = 0.5', fontsize=12)
-plt.ylabel('Interplay Scores', fontsize=12)
+plt.xlabel(r'Joint Probability of PTM1 and PTM2 Co-occurrence, $P(\text{PTM1,PTM2})$', fontsize=12)
+plt.ylabel('Normalized Interplay', fontsize=12)
 plt.ylim([-1, 1])  # Set limits for y-axis to -7.5 to 7.5 for better visualization
 plt.legend(frameon=False)
 plt.grid(True, linestyle='--', linewidth=0.5)

@@ -120,10 +120,16 @@ for variant in histone_variants:
     plt.tight_layout()
     
     # Save and display the figure
-    output_filename = os.path.join(outputdir, f"{variant}_heatmap.png")
-    plt.savefig(output_filename, dpi=300)
+    # output_filename = os.path.join(outputdir, f"{variant}_heatmap.png")
+    # plt.savefig(output_filename, dpi=300)
+    # plt.show()
+    # print(f"Heat map for {variant} saved as '{output_filename}'")
+    
+    output_filename_svg = os.path.join(outputdir, f"{variant}_heatmap.svg")
+    plt.savefig(output_filename_svg, dpi=1200, format='svg')
     plt.show()
-    print(f"Heat map for {variant} saved as '{output_filename}'")
+
+print(f"Heat map for {variant} saved as '{output_filename_png}' and '{output_filename_svg}'")
 
 ```
 
@@ -159,9 +165,14 @@ cbar.ax.tick_params(labelsize=5)  # Set tick label font size
 plt.tight_layout()
 
 # Save the scale bar image in the output directory
-scalebar_filename = os.path.join(outputdir, "scale_bar.png")
-plt.savefig(scalebar_filename, dpi=300)
+# scalebar_filename = os.path.join(outputdir, "scale_bar.png")
+# plt.savefig(scalebar_filename, dpi=300)
+# plt.show()
+
+scalebar_filename = os.path.join(outputdir, "scale_bar.svg")
+plt.savefig(scalebar_filename, dpi=1200)
 plt.show()
+
 
 print(f"Scale bar saved as '{scalebar_filename}'")
 
